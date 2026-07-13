@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
 import { POLL_INTERVAL_MS } from './config.js';
+import { chime } from './chime.js';
 import Header from './components/Header.jsx';
 import RoomGrid from './components/RoomGrid.jsx';
 import WaitingList from './components/WaitingList.jsx';
@@ -12,10 +13,33 @@ export default function App() {
   const [error, setError] = useState(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [selected, setSelected] = useState(null); // { patient, appt_time, provider_name, ... }
+  const [theme, setTheme] = useState(() => localStorage.getItem('meridian-theme') || 'light');
+  const [soundOn, setSoundOn] = useState(() => localStorage.getItem('meridian-sound') === 'on');
+  const seenFlagIds = useRef(null);
+  const soundOnRef = useRef(soundOn);
+  soundOnRef.current = soundOn;
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('meridian-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('meridian-sound', soundOn ? 'on' : 'off');
+  }, [soundOn]);
 
   const refresh = useCallback(async () => {
     try {
-      setState(await api.getState());
+      const next = await api.getState();
+      // Chime once per newly raised flag (skip the very first load).
+      const ids = new Set(next.rooms.flatMap((r) => r.flags.map((f) => f.id)));
+      if (seenFlagIds.current && soundOnRef.current) {
+        for (const id of ids) {
+          if (!seenFlagIds.current.has(id)) { chime(); break; }
+        }
+      }
+      seenFlagIds.current = ids;
+      setState(next);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -52,7 +76,15 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header state={state} nowMs={nowMs} act={act} />
+      <Header
+        state={state}
+        nowMs={nowMs}
+        act={act}
+        theme={theme}
+        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        soundOn={soundOn}
+        onToggleSound={() => setSoundOn(!soundOn)}
+      />
       {error && <div className="error-banner">{error}</div>}
       <main className="layout">
         <section className="board-col">

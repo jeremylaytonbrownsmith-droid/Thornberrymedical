@@ -46,6 +46,7 @@ app.post('/api/rooms/:id/clean', wrap((req) => svc.markRoomClean(+req.params.id)
 
 // Status / request flags
 app.post('/api/rooms/:id/flags', wrap((req) => svc.raiseFlag(+req.params.id, req.body.request_type)));
+app.post('/api/flags/:id/claim', wrap((req) => svc.claimFlag(+req.params.id, req.body?.name)));
 app.post('/api/flags/:id/resolve', wrap((req) => svc.resolveFlag(+req.params.id)));
 
 // Demo controls

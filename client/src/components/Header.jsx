@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { formatClock } from '../time.js';
 
-export default function Header({ state, nowMs, act }) {
+export default function Header({ state, nowMs, act, theme, onToggleTheme, soundOn, onToggleSound }) {
   const occupied = state.rooms.filter((r) => r.status === 'occupied').length;
 
   return (
@@ -18,6 +18,20 @@ export default function Header({ state, nowMs, act }) {
       </div>
       <div className="header-controls">
         <span className="clock">{formatClock(nowMs)}</span>
+        <button
+          className={`icon-toggle${soundOn ? ' active' : ''}`}
+          title={soundOn ? 'Chime on new requests: on' : 'Chime on new requests: off'}
+          onClick={onToggleSound}
+        >
+          {soundOn ? '🔔 Chime on' : '🔕 Chime off'}
+        </button>
+        <button
+          className="icon-toggle"
+          title="Switch between light and dark board"
+          onClick={onToggleTheme}
+        >
+          {theme === 'dark' ? '☀ Light board' : '☾ Dark board'}
+        </button>
         <label className="sim-toggle" title="When on, synthetic patients move through the clinic automatically">
           <input
             type="checkbox"

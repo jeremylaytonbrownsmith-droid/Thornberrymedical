@@ -11,6 +11,7 @@ const TICK_MS = 4000;
 const PACE = {
   minVisitSeconds: 35,        // minimum time roomed before eligible for checkout-ready
   minReadySeconds: 12,        // minimum time in ready_for_checkout before checkout
+  minFlagClaimSeconds: 8,     // sim staff claim ("take") a flag after this
   minFlagAgeSeconds: 20,      // sim only auto-resolves flags older than this
   targetScheduled: 5,         // keep this many upcoming appointments on the books
   maxWaiting: 5,
@@ -38,7 +39,7 @@ function tick() {
     const ready = db.prepare(`SELECT id FROM appointments WHERE status = 'ready_for_checkout'`).all();
     const emptyRooms = db.prepare(`SELECT id FROM rooms WHERE status = 'empty'`).all();
     const dirtyRooms = db.prepare(`SELECT id FROM rooms WHERE status = 'needs_cleaning'`).all();
-    const activeFlags = db.prepare(`SELECT id, created_at FROM staff_requests WHERE resolved_at IS NULL`).all();
+    const activeFlags = db.prepare(`SELECT id, created_at, taken_by FROM staff_requests WHERE resolved_at IS NULL`).all();
 
     // Keep the upcoming schedule stocked with fresh synthetic patients.
     if (scheduled.length < PACE.targetScheduled && chance(0.7)) {
@@ -63,9 +64,14 @@ function tick() {
       svc.raiseFlag(target.room_id, pick(['patient_waiting', 'needs_assistance', 'needs_supplies', 'ready_for_provider']));
     }
 
-    // Staff work the flags down after a while.
+    // Staff work the flags down: first someone takes the request, then it
+    // gets resolved (mirrors real front-desk acknowledge-then-handle flow).
     for (const f of activeFlags) {
-      if (ageSeconds(f.created_at) > PACE.minFlagAgeSeconds && chance(0.4)) svc.resolveFlag(f.id);
+      if (!f.taken_by && ageSeconds(f.created_at) > PACE.minFlagClaimSeconds && chance(0.5)) {
+        svc.claimFlag(f.id);
+      } else if (f.taken_by && ageSeconds(f.created_at) > PACE.minFlagAgeSeconds && chance(0.45)) {
+        svc.resolveFlag(f.id);
+      }
     }
 
     // Visits wrap up: roomed -> ready_for_checkout.

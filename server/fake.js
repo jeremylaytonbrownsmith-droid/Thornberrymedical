@@ -18,6 +18,9 @@ const VISIT_REASONS = [
 
 const PROVIDERS = ['Dr. Ashford', 'Dr. Ibarra', 'Dr. Okafor', 'PA Whitfield'];
 
+// Front-desk / MA staff who can claim ("take") a request flag.
+export const STAFF = ['Jamie', 'Renee', 'Marcus', 'Dee'];
+
 export const ROOM_NAMES = ['Exam 1', 'Exam 2', 'Exam 3', 'Exam 4', 'Exam 5', 'Exam 6'];
 
 export const REQUEST_TYPES = [

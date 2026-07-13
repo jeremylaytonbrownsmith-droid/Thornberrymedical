@@ -1,6 +1,32 @@
-/* Meridian — patient flow board. Dark, high-contrast, legible from across a room. */
+/* Meridian — patient flow board. High-contrast and legible from across a room.
+   Light theme is the default (bright clinic environments); dark is a toggle
+   for dim rooms. All colors flow through the tokens below. */
 
 :root {
+  --bg: #eef2f7;
+  --bg-raised: #ffffff;
+  --bg-hover: #e5ebf3;
+  --line: #d3dce7;
+  --text: #182430;
+  --text-dim: #5d6c80;
+  --accent: #0e8577;
+  --accent-soft: #d5eeea;
+  --ok: #1f8f52;
+  --warn: #a06e00;
+  --alert: #cc3d3d;
+  --info: #2f7fc1;
+  --chip-warn-bg: #f8ecca;   --chip-warn-text: #7c5a05;
+  --chip-alert-bg: #fadddd;  --chip-alert-text: #a32e2e;
+  --chip-info-bg: #dcebf8;   --chip-info-text: #22639b;
+  --chip-ok-bg: #d9f0e2;     --chip-ok-text: #1a7343;
+  --elapsed-warn-bg: #f0b429; --elapsed-warn-text: #211600;
+  --elapsed-alert-bg: #d64545; --elapsed-alert-text: #ffffff;
+  --btn-primary-bg: #0e8577; --btn-primary-text: #ffffff; --btn-primary-hover: #0b6e62;
+  --backdrop: rgba(24, 36, 48, 0.45);
+  --card-shadow: 0 1px 2px rgba(24, 36, 48, 0.06);
+}
+
+[data-theme='dark'] {
   --bg: #0e1420;
   --bg-raised: #172033;
   --bg-hover: #1d2941;
@@ -8,13 +34,23 @@
   --text: #e8edf6;
   --text-dim: #8a97ad;
   --accent: #35c2b0;
-  --accent-dim: #1e6f66;
+  --accent-soft: #1e6f66;
   --ok: #4fc07a;
   --warn: #e8b73a;
   --alert: #e85d5d;
   --info: #5aa9e6;
-  --radius: 10px;
+  --chip-warn-bg: #3d3418;   --chip-warn-text: #e8b73a;
+  --chip-alert-bg: #451f24;  --chip-alert-text: #ff9c9c;
+  --chip-info-bg: #1b3049;   --chip-info-text: #5aa9e6;
+  --chip-ok-bg: #1c3a28;     --chip-ok-text: #4fc07a;
+  --elapsed-warn-bg: #e8b73a; --elapsed-warn-text: #101010;
+  --elapsed-alert-bg: #e85d5d; --elapsed-alert-text: #ffffff;
+  --btn-primary-bg: #1e6f66; --btn-primary-text: #e8edf6; --btn-primary-hover: #35c2b0;
+  --backdrop: rgba(5, 9, 16, 0.65);
+  --card-shadow: none;
 }
+
+:root { --radius: 10px; }
 
 * { box-sizing: border-box; }
 
@@ -53,9 +89,10 @@ body {
   color: var(--text-dim);
   font-size: 0.95rem;
   margin-left: auto;
+  font-variant-numeric: tabular-nums;
 }
 .header-stats strong { color: var(--text); font-size: 1.1rem; }
-.header-controls { display: flex; align-items: center; gap: 1rem; }
+.header-controls { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
 .clock { font-size: 1.35rem; font-variant-numeric: tabular-nums; font-weight: 600; }
 .sim-toggle {
   display: flex;
@@ -69,8 +106,8 @@ body {
 .sim-toggle input { accent-color: var(--accent); width: 1.05rem; height: 1.05rem; cursor: pointer; }
 
 .error-banner {
-  background: #47222a;
-  color: #ffb4b4;
+  background: var(--chip-alert-bg);
+  color: var(--chip-alert-text);
   padding: 0.5rem 1.4rem;
   font-size: 0.9rem;
 }
@@ -85,6 +122,9 @@ body {
   align-items: start;
 }
 @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+/* grid items default to min-width:auto, letting wide intrinsic content
+   (the waiting table) stretch the column past the viewport on phones */
+.layout > * { min-width: 0; }
 
 .section-title {
   font-size: 0.85rem;
@@ -94,7 +134,7 @@ body {
   margin: 0 0 0.7rem;
 }
 .count-pill {
-  background: var(--accent-dim);
+  background: var(--accent-soft);
   color: var(--text);
   border-radius: 99px;
   padding: 0.05rem 0.55rem;
@@ -119,6 +159,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  box-shadow: var(--card-shadow);
 }
 .room-occupied { cursor: pointer; }
 .room-occupied:hover { background: var(--bg-hover); }
@@ -141,67 +182,88 @@ body {
   border-radius: 6px;
 }
 .elapsed-ok { color: var(--ok); }
-.elapsed-warn { color: #101010; background: var(--warn); }
-.elapsed-alert { color: #fff; background: var(--alert); }
+.elapsed-warn { color: var(--elapsed-warn-text); background: var(--elapsed-warn-bg); }
+.elapsed-alert { color: var(--elapsed-alert-text); background: var(--elapsed-alert-bg); }
 
 .room-flags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .flag {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 0.2rem 0.35rem;
   font-size: 0.8rem;
   font-weight: 600;
   padding: 0.15rem 0.3rem 0.15rem 0.55rem;
-  border-radius: 99px;
+  border-radius: 12px;
 }
-.flag-warn { background: #3d3418; color: var(--warn); }
-.flag-alert { background: #451f24; color: #ff9c9c; }
-.flag-info { background: #1b3049; color: var(--info); }
-.flag-ok { background: #1c3a28; color: var(--ok); }
-.flag-resolve {
+.flag-warn { background: var(--chip-warn-bg); color: var(--chip-warn-text); }
+.flag-alert { background: var(--chip-alert-bg); color: var(--chip-alert-text); }
+.flag-info { background: var(--chip-info-bg); color: var(--chip-info-text); }
+.flag-ok { background: var(--chip-ok-bg); color: var(--chip-ok-text); }
+.flag-age { font-weight: 700; font-variant-numeric: tabular-nums; opacity: 0.85; }
+.flag-taken { font-style: italic; opacity: 0.85; }
+.flag-btn {
   border: none;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(127, 127, 127, 0.18);
   color: inherit;
   border-radius: 99px;
-  width: 1.15rem;
-  height: 1.15rem;
+  padding: 0 0.45rem;
+  height: 1.25rem;
   line-height: 1;
   cursor: pointer;
   font-size: 0.7rem;
+  font-weight: 700;
 }
-.flag-resolve:hover { background: rgba(255, 255, 255, 0.28); }
+.flag-btn:hover { background: rgba(127, 127, 127, 0.34); }
 
 .room-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: auto; }
 
 /* ---------- buttons & inputs ---------- */
 .btn {
   border: 1px solid var(--line);
-  background: var(--bg-hover);
+  background: var(--bg-raised);
   color: var(--text);
   border-radius: 7px;
   padding: 0.42rem 0.8rem;
   font-size: 0.88rem;
   cursor: pointer;
+  font-family: inherit;
 }
-.btn:hover { border-color: var(--accent-dim); }
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .btn-small { padding: 0.28rem 0.6rem; font-size: 0.8rem; }
-.btn-primary { background: var(--accent-dim); border-color: var(--accent-dim); font-weight: 600; }
-.btn-primary:hover { background: var(--accent); color: #08211d; }
+.btn-primary { background: var(--btn-primary-bg); border-color: var(--btn-primary-bg); color: var(--btn-primary-text); font-weight: 600; }
+.btn-primary:hover { background: var(--btn-primary-hover); border-color: var(--btn-primary-hover); }
 .btn-ghost { background: transparent; }
 
+.icon-toggle {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 7px;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.icon-toggle.active { color: var(--accent); border-color: var(--accent); }
+
 .flag-select, .room-select {
-  background: var(--bg-hover);
+  background: var(--bg-raised);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 7px;
   padding: 0.28rem 0.4rem;
   font-size: 0.8rem;
   cursor: pointer;
+  font-family: inherit;
 }
 .room-select:disabled { opacity: 0.5; cursor: default; }
 
 /* ---------- waiting room ---------- */
 .waiting-section { margin-top: 1.6rem; }
+.waiting-scroll { overflow-x: auto; }
 .waiting-table { width: 100%; border-collapse: collapse; }
 .waiting-table th {
   text-align: left;
@@ -227,8 +289,8 @@ body {
   margin-left: 0.5rem;
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--info);
-  background: #1b3049;
+  color: var(--chip-info-text);
+  background: var(--chip-info-bg);
   border-radius: 99px;
   padding: 0.1rem 0.45rem;
   vertical-align: middle;
@@ -240,6 +302,7 @@ body {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 1rem;
+  box-shadow: var(--card-shadow);
 }
 .schedule-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .schedule-row {
@@ -262,7 +325,8 @@ body {
   color: var(--text);
   border-radius: 7px;
   padding: 0.45rem 0.6rem;
-  font-size: 0.9rem;
+  font-size: 16px;
+  font-family: inherit;
 }
 .walkin-actions { display: flex; gap: 0.5rem; }
 
@@ -270,7 +334,7 @@ body {
 .panel-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 9, 16, 0.65);
+  background: var(--backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -299,8 +363,6 @@ body {
 }
 
 /* ---------- small screens (phones) ---------- */
-.waiting-scroll { overflow-x: auto; }
-
 @media (max-width: 640px) {
   .header { padding: 0.7rem 0.9rem; gap: 0.5rem 1rem; }
   .brand-sub { flex-basis: 100%; }

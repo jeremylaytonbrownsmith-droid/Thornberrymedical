@@ -67,6 +67,8 @@ ok(doubleBookRejected, 'assigning a second patient to an occupied room is reject
 const flag = await post(`/api/rooms/${openRoom.id}/flags`, { request_type: 'needs_assistance' });
 state = await get('/api/state');
 ok(state.rooms.find((r) => r.id === openRoom.id).flags.some((f) => f.id === flag.id), 'flag appears on the room');
+const claimed = await post(`/api/flags/${flag.id}/claim`, { name: 'Jamie' });
+ok(claimed.taken_by === 'Jamie', `flag claimed (taken by ${claimed.taken_by})`);
 const resolved = await post(`/api/flags/${flag.id}/resolve`);
 ok(!!resolved.resolved_at, 'flag resolves with timestamp');
 

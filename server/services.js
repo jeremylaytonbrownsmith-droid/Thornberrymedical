@@ -1,7 +1,7 @@
 // Core workflow transitions, shared by the HTTP API and the simulation loop
 // so both paths enforce identical rules and nothing can get "stuck".
 import { db, nowIso } from './db.js';
-import { fakePatient, fakeProvider, ROOM_NAMES, REQUEST_TYPES, pick, randInt } from './fake.js';
+import { fakePatient, fakeProvider, ROOM_NAMES, REQUEST_TYPES, STAFF, pick, randInt } from './fake.js';
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -26,7 +26,7 @@ export function getState() {
   `).all();
 
   const flags = db.prepare(`
-    SELECT id, room_id, request_type, created_at
+    SELECT id, room_id, request_type, created_at, taken_by
     FROM staff_requests WHERE resolved_at IS NULL ORDER BY created_at
   `).all();
   const flagsByRoom = {};
@@ -180,6 +180,16 @@ export function raiseFlag(roomId, requestType) {
   return db.prepare('SELECT * FROM staff_requests WHERE id = ?').get(info.lastInsertRowid);
 }
 
+export function claimFlag(flagId, name) {
+  const flag = db.prepare('SELECT * FROM staff_requests WHERE id = ?').get(flagId);
+  if (!flag) throw new ApiError(404, `No staff request with id ${flagId}`);
+  if (flag.resolved_at) throw new ApiError(400, 'Request is already resolved');
+  if (flag.taken_by) return flag;
+  db.prepare(`UPDATE staff_requests SET taken_by = ? WHERE id = ?`)
+    .run((name || '').trim() || pick(STAFF), flagId);
+  return db.prepare('SELECT * FROM staff_requests WHERE id = ?').get(flagId);
+}
+
 export function resolveFlag(flagId) {
   const flag = db.prepare('SELECT * FROM staff_requests WHERE id = ?').get(flagId);
   if (!flag) throw new ApiError(404, `No staff request with id ${flagId}`);
@@ -235,8 +245,11 @@ export const reseed = db.transaction(() => {
       .run(appointment_id, roomIds[i]);
   }
 
-  // One active flag so the board shows the attention state right away.
+  // One active flag so the board shows the attention state right away,
+  // backdated a couple of minutes so its elapsed timer reads meaningfully.
   raiseFlag(roomIds[1], pick(['ready_for_provider', 'needs_assistance', 'patient_waiting']));
+  db.prepare(`UPDATE staff_requests SET created_at = ? WHERE resolved_at IS NULL`)
+    .run(new Date(now - 2 * MIN).toISOString());
 });
 
 export function seedIfEmpty() {

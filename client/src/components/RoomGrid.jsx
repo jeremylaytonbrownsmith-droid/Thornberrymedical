@@ -3,13 +3,30 @@ import { api } from '../api.js';
 import { FLAG_META } from '../config.js';
 import { displayName, elapsedTone, formatClock, formatElapsed } from '../time.js';
 
-function FlagChip({ flag, act }) {
+function FlagChip({ flag, nowMs, act }) {
   const meta = FLAG_META[flag.request_type] ?? { label: flag.request_type, tone: 'warn' };
   return (
     <span className={`flag flag-${meta.tone}`}>
       {meta.label}
+      <span className="flag-age" title="How long this request has been open">
+        {formatElapsed(flag.created_at, nowMs)}
+      </span>
+      {flag.taken_by ? (
+        <span className="flag-taken" title={`Taken by ${flag.taken_by}`}>· {flag.taken_by}</span>
+      ) : (
+        <button
+          className="flag-btn"
+          title="Take this request"
+          onClick={(e) => {
+            e.stopPropagation();
+            act(() => api.claimFlag(flag.id));
+          }}
+        >
+          Take
+        </button>
+      )}
       <button
-        className="flag-resolve"
+        className="flag-btn"
         title="Resolve"
         onClick={(e) => {
           e.stopPropagation();
@@ -70,7 +87,7 @@ function RoomCard({ room, nowMs, act, onSelect }) {
       </div>
       {room.flags.length > 0 && (
         <div className="room-flags">
-          {room.flags.map((f) => <FlagChip key={f.id} flag={f} act={act} />)}
+          {room.flags.map((f) => <FlagChip key={f.id} flag={f} nowMs={nowMs} act={act} />)}
         </div>
       )}
       <div className="room-actions" onClick={(e) => e.stopPropagation()}>

@@ -52,8 +52,17 @@ desk). The standalone file is the "text someone a link" version.
   `client/src/config.js`).
 - **Flags** — `+ Flag` on an occupied room raises a request (patient waiting,
   needs assistance, needs supplies, ready for provider, checkout ready). Flags
-  show as colored chips; the ✓ resolves them. A "needs assistance" flag turns
-  the whole card red.
+  show as colored chips with a live **elapsed timer** (how long the request has
+  been open). **Take** claims the request under a staff member's name —
+  acknowledge first, resolve second, so the board always shows who owns an open
+  request — and ✓ resolves it. A "needs assistance" flag turns the whole card
+  red.
+- **Light / dark board** — light is the default (clinics are bright places);
+  the header toggle switches to a dark board for dim rooms. The choice is
+  remembered per browser.
+- **Chime** — the header bell toggles a soft two-note chime whenever a new
+  request flag is raised, so front desk staff hear the board without watching
+  it (off by default).
 - **Waiting room** — everyone checked in but not yet roomed, with live wait
   times. Use **Assign room…** to move them into any open room.
 - **Up next** — the schedule. **Check in** moves a patient to the waiting
@@ -108,7 +117,7 @@ getting stuck.
 | `patients` | Synthetic people | `first_name`, `last_initial`, `date_of_birth`, `reason_for_visit`, `phone` |
 | `appointments` | One visit; carries the workflow state | `status` (`scheduled → waiting_room → roomed → ready_for_checkout → checked_out`), `room_id`, `checked_in_at`, `roomed_at`, `checked_out_at`, `is_walk_in` |
 | `rooms` | Exam rooms | `name`, `status` (`empty` / `occupied` / `needs_cleaning`), `current_appointment_id` |
-| `staff_requests` | Request/status flags on a room | `request_type`, `created_at`, `resolved_at` (open = `resolved_at IS NULL`) |
+| `staff_requests` | Request/status flags on a room | `request_type`, `created_at`, `taken_by` (who claimed it), `resolved_at` (open = `resolved_at IS NULL`) |
 
 State transitions live in `server/services.js` and validate preconditions
 (can't room someone who isn't waiting, can't double-book a room, checkout
@@ -126,6 +135,7 @@ POST /api/appointments/:id/ready-checkout
 POST /api/appointments/:id/checkout      frees the room
 POST /api/rooms/:id/clean                needs_cleaning → empty
 POST /api/rooms/:id/flags                raise a flag            {request_type}
+POST /api/flags/:id/claim                take a request          {name?} (random staff if omitted)
 POST /api/flags/:id/resolve
 POST /api/sim                            {enabled: true|false}
 POST /api/reset                          wipe + reseed

@@ -24,6 +24,7 @@ export const api = {
   checkout: (apptId) => post(`/api/appointments/${apptId}/checkout`),
   markClean: (roomId) => post(`/api/rooms/${roomId}/clean`),
   raiseFlag: (roomId, requestType) => post(`/api/rooms/${roomId}/flags`, { request_type: requestType }),
+  claimFlag: (flagId) => post(`/api/flags/${flagId}/claim`),
   resolveFlag: (flagId) => post(`/api/flags/${flagId}/resolve`),
   setSim: (enabled) => post('/api/sim', { enabled }),
   reset: () => post('/api/reset'),

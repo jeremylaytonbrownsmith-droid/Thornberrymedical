@@ -50,8 +50,16 @@ CREATE TABLE IF NOT EXISTS staff_requests (
   room_id INTEGER NOT NULL REFERENCES rooms(id),
   request_type TEXT NOT NULL,
   created_at TEXT NOT NULL,
+  taken_by TEXT,
   resolved_at TEXT
 );
 `);
+
+// Databases created before the claim/"taken by" feature lack the column.
+try {
+  db.exec('ALTER TABLE staff_requests ADD COLUMN taken_by TEXT');
+} catch {
+  // column already exists
+}
 
 export const nowIso = () => new Date().toISOString();
