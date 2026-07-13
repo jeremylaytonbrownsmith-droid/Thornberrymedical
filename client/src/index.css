@@ -297,3 +297,22 @@ body {
   font-size: 0.78rem;
   border-top: 1px solid var(--line);
 }
+
+/* ---------- small screens (phones) ---------- */
+.waiting-scroll { overflow-x: auto; }
+
+@media (max-width: 640px) {
+  .header { padding: 0.7rem 0.9rem; gap: 0.5rem 1rem; }
+  .brand-sub { flex-basis: 100%; }
+  .header-stats { margin-left: 0; width: 100%; order: 3; gap: 1rem; font-size: 0.85rem; }
+  .clock { font-size: 1.15rem; }
+  .layout { padding: 0.9rem; gap: 1rem; }
+  .room-grid { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 0.6rem; }
+  .room-card { min-height: 112px; padding: 0.65rem 0.7rem; }
+  .room-patient { font-size: 1.25rem; }
+  /* provider column is the least useful at a glance — it stays available in
+     the patient panel; hiding it keeps the waiting table on one screen */
+  .waiting-table th:nth-child(4), .waiting-table td:nth-child(4) { display: none; }
+  .waiting-table td { padding: 0.55rem 0.5rem; }
+  .btn { padding: 0.5rem 0.8rem; } /* comfortable touch targets */
+}

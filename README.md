@@ -29,6 +29,20 @@ npm run build
 npm start          # everything on http://localhost:4000
 ```
 
+## Sharing the demo (no server needed)
+
+`standalone/meridian-demo.html` is a single-file, self-contained version of
+the whole demo — same board, same workflow, same simulation — ported to run
+entirely in the browser with in-memory state. It has no dependencies and no
+backend: send the file to anyone (or host it on any static host / open it
+from a phone's Files app) and it just runs. It's mobile-first: entities open
+a bottom sheet with touch-sized action buttons instead of dropdowns. Each
+viewer gets their own private clinic; nothing is stored or transmitted.
+
+The full app below is the real architecture (server-backed, shared state
+across screens — what a clinic would actually run on a wall board plus front
+desk). The standalone file is the "text someone a link" version.
+
 ## Using the board
 
 - **Exam rooms** — each card shows the occupant (first name + last initial

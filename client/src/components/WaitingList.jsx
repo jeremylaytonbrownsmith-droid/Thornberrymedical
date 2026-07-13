@@ -12,6 +12,7 @@ export default function WaitingList({ waiting, rooms, nowMs, act, onSelect }) {
       {waiting.length === 0 ? (
         <div className="empty-note">No one is waiting.</div>
       ) : (
+        <div className="waiting-scroll">
         <table className="waiting-table">
           <thead>
             <tr>
@@ -57,6 +58,7 @@ export default function WaitingList({ waiting, rooms, nowMs, act, onSelect }) {
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );
