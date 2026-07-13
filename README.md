@@ -35,6 +35,16 @@ npm run build
 npm start          # everything on http://localhost:4000
 ```
 
+## Live demo
+
+The shareable demo is published via GitHub Pages:
+
+**https://jeremylaytonbrownsmith-droid.github.io/Thornberrymedical/**
+
+It redeploys automatically (`.github/workflows/deploy-demo.yml` → `gh-pages`
+branch) whenever `standalone/meridian-demo.html` changes on the main working
+branch. Synthetic data only — safe to share publicly.
+
 ## Sharing the demo (no server needed)
 
 `standalone/meridian-demo.html` is a single-file, self-contained version of
