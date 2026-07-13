@@ -29,24 +29,8 @@
     --radius: 10px;
     color-scheme: light;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0e1420; --bg-raised: #172033; --bg-hover: #1d2941; --line: #263450;
-      --text: #e8edf6; --text-dim: #8a97ad;
-      --accent: #35c2b0; --accent-soft: #1e6f66;
-      --ok: #4fc07a; --warn: #e8b73a; --alert: #e85d5d; --info: #5aa9e6;
-      --chip-warn-bg: #3d3418;   --chip-warn-text: #e8b73a;
-      --chip-alert-bg: #451f24;  --chip-alert-text: #ff9c9c;
-      --chip-info-bg: #1b3049;   --chip-info-text: #5aa9e6;
-      --chip-ok-bg: #1c3a28;     --chip-ok-text: #4fc07a;
-      --elapsed-warn-bg: #e8b73a; --elapsed-warn-text: #101010;
-      --elapsed-alert-bg: #e85d5d; --elapsed-alert-text: #ffffff;
-      --btn-primary-bg: #1e6f66; --btn-primary-text: #e8edf6;
-      --backdrop: rgba(5, 9, 16, 0.65);
-      --card-shadow: none;
-      color-scheme: dark;
-    }
-  }
+  /* Light is the default everywhere, regardless of the device's system
+     theme — clinics are bright places. Dark is opt-in via the toggle. */
   :root[data-theme='dark'] {
     --bg: #0e1420; --bg-raised: #172033; --bg-hover: #1d2941; --line: #263450;
     --text: #e8edf6; --text-dim: #8a97ad;
@@ -770,12 +754,19 @@ $('soundToggle').addEventListener('click', () => {
   if (soundOn) chime(); // audible confirmation + unlocks audio on this gesture
 });
 
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  $('themeToggle').textContent = theme === 'dark' ? '☀ Light board' : '☾ Dark board';
+  try { localStorage.setItem('meridian-theme', theme); } catch (e) { /* private mode */ }
+}
 $('themeToggle').addEventListener('click', () => {
-  const root = document.documentElement;
-  const dark = getComputedStyle(root).getPropertyValue('color-scheme').trim() === 'dark';
-  root.dataset.theme = dark ? 'light' : 'dark';
-  $('themeToggle').textContent = dark ? '☾ Dark board' : '☀ Light board';
+  const dark = getComputedStyle(document.documentElement).getPropertyValue('color-scheme').trim() === 'dark';
+  applyTheme(dark ? 'light' : 'dark');
 });
+try {
+  const saved = localStorage.getItem('meridian-theme');
+  if (saved === 'dark' || saved === 'light') applyTheme(saved);
+} catch (e) { /* private mode — stay on the light default */ }
 
 $('resetBtn').addEventListener('click', () => {
   if (confirm('Clear all demo data and reseed with fresh fake patients?')) { seed(); render(); }
