@@ -7,8 +7,8 @@ export default function Header({ state, nowMs, act, theme, onToggleTheme, soundO
   return (
     <header className="header">
       <div className="brand">
-        <span className="brand-mark">◑</span>
-        <span className="brand-name">Meridian</span>
+        <span className="brand-mark">≈</span>
+        <span className="brand-name">Pluff</span>
         <span className="brand-sub">Thornberry Medical · Beaufort, South Carolina (Demo)</span>
       </div>
       <div className="header-stats">

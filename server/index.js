@@ -1,4 +1,4 @@
-// Meridian — patient-flow board demo server. Synthetic data only; no real
+// Pluff — patient-flow board demo server. Synthetic data only; no real
 // patients, no external integrations, fully offline.
 import express from 'express';
 import path from 'node:path';
@@ -67,5 +67,5 @@ svc.seedIfEmpty();
 startSimLoop();
 
 app.listen(PORT, () => {
-  console.log(`Meridian flow board API on http://localhost:${PORT} (sim: ${simEnabled() ? 'on' : 'off'})`);
+  console.log(`Pluff flow board API on http://localhost:${PORT} (sim: ${simEnabled() ? 'on' : 'off'})`);
 });

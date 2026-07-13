@@ -1,4 +1,4 @@
-# Meridian — Patient Flow Board (Demo)
+# Pluff — Patient Flow Board (Demo)
 
 A live "big board" for a small medical practice front desk. The model matches
 how these boards are used in real clinics: **the EMR owns scheduling and
@@ -42,13 +42,13 @@ The shareable demo is published via GitHub Pages:
 **https://jeremylaytonbrownsmith-droid.github.io/Thornberrymedical/**
 
 GitHub Pages serves this branch's root, where `index.html` is a copy of
-`standalone/meridian-demo.html` kept in sync by
+`standalone/pluff-demo.html` kept in sync by
 `.github/workflows/deploy-demo.yml`. Synthetic data only — safe to share
 publicly.
 
 ## Sharing the demo (no server needed)
 
-`standalone/meridian-demo.html` is a single-file, self-contained version of
+`standalone/pluff-demo.html` is a single-file, self-contained version of
 the whole demo — same board, same workflow, same simulation — ported to run
 entirely in the browser with in-memory state. It has no dependencies and no
 backend: send the file to anyone (or host it on any static host / open it

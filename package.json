@@ -1,8 +1,8 @@
 {
-  "name": "meridian-flow-board",
+  "name": "pluff-flow-board",
   "version": "1.0.0",
   "private": true,
-  "description": "Meridian — a patient-flow board demo for a small medical practice front desk. Synthetic data only.",
+  "description": "Pluff — a patient-flow board demo for a small medical practice front desk. Synthetic data only.",
   "type": "module",
   "scripts": {
     "postinstall": "npm --prefix client install",

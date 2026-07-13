@@ -1,7 +1,7 @@
-<title>Meridian — Patient Flow Board</title>
+<title>Pluff — Patient Flow Board</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <style>
-  /* Meridian — clinic flow board. Light-first (clinics are bright places);
+  /* Pluff — clinic flow board. Light-first (clinics are bright places);
      dark available via OS preference or the in-page toggle. All colors flow
      through the tokens below. */
   :root {
@@ -291,8 +291,8 @@
 
 <header class="header">
   <div class="brand">
-    <span class="brand-mark">◑</span>
-    <span class="brand-name">Meridian</span>
+    <span class="brand-mark">≈</span>
+    <span class="brand-name">Pluff</span>
     <span class="brand-sub">Thornberry Medical · Beaufort, South Carolina (Demo)</span>
   </div>
   <span class="clock" id="clock">—</span>
@@ -757,14 +757,14 @@ $('soundToggle').addEventListener('click', () => {
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   $('themeToggle').textContent = theme === 'dark' ? '☀ Light board' : '☾ Dark board';
-  try { localStorage.setItem('meridian-theme', theme); } catch (e) { /* private mode */ }
+  try { localStorage.setItem('pluff-theme', theme); } catch (e) { /* private mode */ }
 }
 $('themeToggle').addEventListener('click', () => {
   const dark = getComputedStyle(document.documentElement).getPropertyValue('color-scheme').trim() === 'dark';
   applyTheme(dark ? 'light' : 'dark');
 });
 try {
-  const saved = localStorage.getItem('meridian-theme');
+  const saved = localStorage.getItem('pluff-theme');
   if (saved === 'dark' || saved === 'light') applyTheme(saved);
 } catch (e) { /* private mode — stay on the light default */ }
 

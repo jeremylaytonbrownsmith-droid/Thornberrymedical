@@ -1,4 +1,4 @@
-// Meridian — database layer. SQLite via better-sqlite3, file-based, zero setup.
+// Pluff — database layer. SQLite via better-sqlite3, file-based, zero setup.
 // ALL data in this system is synthetic. There are no real patients and no PHI.
 import Database from 'better-sqlite3';
 import fs from 'node:fs';

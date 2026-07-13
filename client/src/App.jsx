@@ -12,19 +12,19 @@ export default function App() {
   const [error, setError] = useState(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [selected, setSelected] = useState(null); // { patient, appt_time, provider_name, ... }
-  const [theme, setTheme] = useState(() => localStorage.getItem('meridian-theme') || 'light');
-  const [soundOn, setSoundOn] = useState(() => localStorage.getItem('meridian-sound') === 'on');
+  const [theme, setTheme] = useState(() => localStorage.getItem('pluff-theme') || 'light');
+  const [soundOn, setSoundOn] = useState(() => localStorage.getItem('pluff-sound') === 'on');
   const seenFlagIds = useRef(null);
   const soundOnRef = useRef(soundOn);
   soundOnRef.current = soundOn;
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem('meridian-theme', theme);
+    localStorage.setItem('pluff-theme', theme);
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem('meridian-sound', soundOn ? 'on' : 'off');
+    localStorage.setItem('pluff-sound', soundOn ? 'on' : 'off');
   }, [soundOn]);
 
   const refresh = useCallback(async () => {

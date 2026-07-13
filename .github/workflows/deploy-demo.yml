@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Sync root index.html from standalone demo
         run: |
-          cp standalone/meridian-demo.html index.html
+          cp standalone/pluff-demo.html index.html
           if git diff --quiet -- index.html; then
             echo "index.html already up to date"
             exit 0
