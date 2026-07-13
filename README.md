@@ -41,9 +41,10 @@ The shareable demo is published via GitHub Pages:
 
 **https://jeremylaytonbrownsmith-droid.github.io/Thornberrymedical/**
 
-It redeploys automatically (`.github/workflows/deploy-demo.yml` → `gh-pages`
-branch) whenever `standalone/meridian-demo.html` changes on the main working
-branch. Synthetic data only — safe to share publicly.
+GitHub Pages serves this branch's root, where `index.html` is a copy of
+`standalone/meridian-demo.html` kept in sync by
+`.github/workflows/deploy-demo.yml`. Synthetic data only — safe to share
+publicly.
 
 ## Sharing the demo (no server needed)
 

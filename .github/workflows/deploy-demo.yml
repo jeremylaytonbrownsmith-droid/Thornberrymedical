@@ -1,8 +1,9 @@
-# Publishes the standalone demo (synthetic data only) to GitHub Pages by
-# updating the gh-pages branch whenever the demo file changes. The full
-# server-backed app is not deployed here — this is just the shareable
-# single-file demo.
-name: Deploy demo to GitHub Pages
+# Keeps the GitHub Pages demo current. Pages serves this repo's default
+# branch root, where index.html is a copy of the standalone demo (synthetic
+# data only). This workflow re-syncs index.html whenever the demo changes.
+# Pushes made with GITHUB_TOKEN do not retrigger workflows, so this cannot
+# loop.
+name: Sync demo to GitHub Pages
 
 on:
   push:
@@ -20,21 +21,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Publish demo to gh-pages
+      - name: Sync root index.html from standalone demo
         run: |
-          mkdir -p /tmp/site
-          cp standalone/meridian-demo.html /tmp/site/index.html
-          touch /tmp/site/.nojekyll
-          cd /tmp/site
-          git init -b gh-pages
+          cp standalone/meridian-demo.html index.html
+          if git diff --quiet -- index.html; then
+            echo "index.html already up to date"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Deploy demo from ${GITHUB_SHA::7}"
-          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git add index.html
+          git commit -m "Sync Pages index.html from standalone demo"
+          git push

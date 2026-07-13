@@ -1,0 +1,812 @@
+<title>Meridian — Patient Flow Board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<style>
+  /* Meridian — clinic flow board. Light-first (clinics are bright places);
+     dark available via OS preference or the in-page toggle. All colors flow
+     through the tokens below. */
+  :root {
+    --bg: #eef2f7;
+    --bg-raised: #ffffff;
+    --bg-hover: #e5ebf3;
+    --line: #d3dce7;
+    --text: #182430;
+    --text-dim: #5d6c80;
+    --accent: #0e8577;
+    --accent-soft: #d5eeea;
+    --ok: #1f8f52;
+    --warn: #a06e00;
+    --alert: #cc3d3d;
+    --info: #2f7fc1;
+    --chip-warn-bg: #f8ecca;   --chip-warn-text: #7c5a05;
+    --chip-alert-bg: #fadddd;  --chip-alert-text: #a32e2e;
+    --chip-info-bg: #dcebf8;   --chip-info-text: #22639b;
+    --chip-ok-bg: #d9f0e2;     --chip-ok-text: #1a7343;
+    --elapsed-warn-bg: #f0b429; --elapsed-warn-text: #211600;
+    --elapsed-alert-bg: #d64545; --elapsed-alert-text: #ffffff;
+    --btn-primary-bg: #0e8577; --btn-primary-text: #ffffff;
+    --backdrop: rgba(24, 36, 48, 0.45);
+    --card-shadow: 0 1px 2px rgba(24, 36, 48, 0.06);
+    --radius: 10px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1420; --bg-raised: #172033; --bg-hover: #1d2941; --line: #263450;
+      --text: #e8edf6; --text-dim: #8a97ad;
+      --accent: #35c2b0; --accent-soft: #1e6f66;
+      --ok: #4fc07a; --warn: #e8b73a; --alert: #e85d5d; --info: #5aa9e6;
+      --chip-warn-bg: #3d3418;   --chip-warn-text: #e8b73a;
+      --chip-alert-bg: #451f24;  --chip-alert-text: #ff9c9c;
+      --chip-info-bg: #1b3049;   --chip-info-text: #5aa9e6;
+      --chip-ok-bg: #1c3a28;     --chip-ok-text: #4fc07a;
+      --elapsed-warn-bg: #e8b73a; --elapsed-warn-text: #101010;
+      --elapsed-alert-bg: #e85d5d; --elapsed-alert-text: #ffffff;
+      --btn-primary-bg: #1e6f66; --btn-primary-text: #e8edf6;
+      --backdrop: rgba(5, 9, 16, 0.65);
+      --card-shadow: none;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #0e1420; --bg-raised: #172033; --bg-hover: #1d2941; --line: #263450;
+    --text: #e8edf6; --text-dim: #8a97ad;
+    --accent: #35c2b0; --accent-soft: #1e6f66;
+    --ok: #4fc07a; --warn: #e8b73a; --alert: #e85d5d; --info: #5aa9e6;
+    --chip-warn-bg: #3d3418;   --chip-warn-text: #e8b73a;
+    --chip-alert-bg: #451f24;  --chip-alert-text: #ff9c9c;
+    --chip-info-bg: #1b3049;   --chip-info-text: #5aa9e6;
+    --chip-ok-bg: #1c3a28;     --chip-ok-text: #4fc07a;
+    --elapsed-warn-bg: #e8b73a; --elapsed-warn-text: #101010;
+    --elapsed-alert-bg: #e85d5d; --elapsed-alert-text: #ffffff;
+    --btn-primary-bg: #1e6f66; --btn-primary-text: #e8edf6;
+    --backdrop: rgba(5, 9, 16, 0.65);
+    --card-shadow: none;
+    color-scheme: dark;
+  }
+  :root[data-theme='light'] {
+    --bg: #eef2f7; --bg-raised: #ffffff; --bg-hover: #e5ebf3; --line: #d3dce7;
+    --text: #182430; --text-dim: #5d6c80;
+    --accent: #0e8577; --accent-soft: #d5eeea;
+    --ok: #1f8f52; --warn: #a06e00; --alert: #cc3d3d; --info: #2f7fc1;
+    --chip-warn-bg: #f8ecca;   --chip-warn-text: #7c5a05;
+    --chip-alert-bg: #fadddd;  --chip-alert-text: #a32e2e;
+    --chip-info-bg: #dcebf8;   --chip-info-text: #22639b;
+    --chip-ok-bg: #d9f0e2;     --chip-ok-text: #1a7343;
+    --elapsed-warn-bg: #f0b429; --elapsed-warn-text: #211600;
+    --elapsed-alert-bg: #d64545; --elapsed-alert-text: #ffffff;
+    --btn-primary-bg: #0e8577; --btn-primary-text: #ffffff;
+    --backdrop: rgba(24, 36, 48, 0.45);
+    --card-shadow: 0 1px 2px rgba(24, 36, 48, 0.06);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ---------- header ---------- */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-raised);
+    border-bottom: 1px solid var(--line);
+    padding: 0.6rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem 1.2rem;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: baseline; gap: 0.5rem; margin-right: auto; }
+  .brand-mark { color: var(--accent); font-size: 1.3rem; align-self: center; }
+  .brand-name { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.06em; color: var(--accent); }
+  .brand-sub { color: var(--text-dim); font-size: 0.75rem; }
+  .clock { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .header-controls { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+  .sim-toggle {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.82rem; color: var(--text-dim); cursor: pointer; user-select: none;
+  }
+  .sim-toggle input { accent-color: var(--accent); width: 1.05rem; height: 1.05rem; cursor: pointer; }
+  .icon-toggle {
+    border: 1px solid var(--line); background: transparent; color: var(--text-dim);
+    border-radius: 7px; padding: 0.3rem 0.5rem; font-size: 0.78rem;
+    cursor: pointer; font-family: inherit; touch-action: manipulation;
+  }
+  .icon-toggle.active { color: var(--accent); border-color: var(--accent); }
+
+  .statbar {
+    display: flex; gap: 1.1rem; padding: 0.45rem 1rem;
+    color: var(--text-dim); font-size: 0.85rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-raised);
+    font-variant-numeric: tabular-nums;
+  }
+  .statbar strong { color: var(--text); font-size: 1rem; }
+
+  .demo-note {
+    padding: 0.45rem 1rem; font-size: 0.75rem; color: var(--text-dim);
+    border-bottom: 1px solid var(--line);
+  }
+  .demo-note b { color: var(--accent); font-weight: 600; }
+
+  /* ---------- layout ---------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 1.2rem;
+    padding: 1rem;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; padding: 0.8rem; } }
+  .layout > * { min-width: 0; }
+
+  .section-title {
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-dim); margin: 0 0 0.6rem;
+  }
+  .count-pill {
+    background: var(--accent-soft); color: var(--text); border-radius: 99px;
+    padding: 0.05rem 0.5rem; font-size: 0.75rem; margin-left: 0.3rem;
+  }
+  .empty-note { color: var(--text-dim); padding: 0.6rem 0; font-size: 0.9rem; }
+
+  /* ---------- rooms ---------- */
+  .room-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+    gap: 0.7rem;
+  }
+  @media (max-width: 480px) {
+    .room-grid { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 0.55rem; }
+  }
+  .room-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.65rem 0.75rem;
+    min-height: 116px;
+    display: flex; flex-direction: column; gap: 0.35rem;
+    box-shadow: var(--card-shadow);
+  }
+  .room-card.tappable { cursor: pointer; }
+  .room-card.tappable:active { background: var(--bg-hover); }
+  .room-card.tone-ok { border-left-color: var(--ok); }
+  .room-card.tone-warn { border-left-color: var(--warn); }
+  .room-card.tone-alert { border-left-color: var(--alert); box-shadow: 0 0 0 1px var(--alert); }
+  .room-card.tone-clean { border-left-color: var(--info); opacity: 0.92; }
+
+  .room-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.4rem; }
+  .room-name { font-weight: 700; letter-spacing: 0.03em; font-size: 0.92rem; }
+  .room-empty-label { color: var(--text-dim); font-size: 0.8rem; }
+  .room-patient { font-size: 1.3rem; font-weight: 700; line-height: 1.15; }
+  .room-meta { color: var(--text-dim); font-size: 0.78rem; }
+
+  .elapsed {
+    font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.98rem;
+    padding: 0 0.35rem; border-radius: 6px; white-space: nowrap;
+  }
+  .elapsed-ok { color: var(--ok); }
+  .elapsed-warn { color: var(--elapsed-warn-text); background: var(--elapsed-warn-bg); }
+  .elapsed-alert { color: var(--elapsed-alert-text); background: var(--elapsed-alert-bg); }
+
+  .room-flags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .flag {
+    display: inline-flex; align-items: center; flex-wrap: wrap; max-width: 100%;
+    gap: 0.15rem 0.3rem;
+    font-size: 0.73rem; font-weight: 600;
+    padding: 0.12rem 0.28rem 0.12rem 0.5rem; border-radius: 12px;
+  }
+  .flag-warn { background: var(--chip-warn-bg); color: var(--chip-warn-text); }
+  .flag-alert { background: var(--chip-alert-bg); color: var(--chip-alert-text); }
+  .flag-info { background: var(--chip-info-bg); color: var(--chip-info-text); }
+  .flag-ok { background: var(--chip-ok-bg); color: var(--chip-ok-text); }
+  .flag-age { font-weight: 700; font-variant-numeric: tabular-nums; opacity: 0.85; }
+  .flag-taken { font-style: italic; opacity: 0.85; }
+  .flag-btn {
+    border: none; background: rgba(127,127,127,0.18); color: inherit;
+    border-radius: 99px; padding: 0 0.4rem; height: 1.25rem; line-height: 1;
+    cursor: pointer; font-size: 0.68rem; font-weight: 700; flex: none;
+  }
+  .flag-btn:active { background: rgba(127,127,127,0.34); }
+
+  .room-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: auto; }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    border: 1px solid var(--line); background: var(--bg-raised); color: var(--text);
+    border-radius: 8px; padding: 0.5rem 0.85rem; font-size: 0.88rem;
+    cursor: pointer; font-family: inherit; touch-action: manipulation;
+  }
+  .btn:active { border-color: var(--accent); }
+  .btn:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .btn-small { padding: 0.32rem 0.6rem; font-size: 0.78rem; }
+  .btn-primary { background: var(--btn-primary-bg); border-color: var(--btn-primary-bg); color: var(--btn-primary-text); font-weight: 600; }
+  .btn-ghost { background: transparent; }
+  .btn-block { width: 100%; }
+
+  /* ---------- checked-in queue ---------- */
+  .panel-hint { color: var(--text-dim); font-size: 0.78rem; margin: 0 0 0.7rem; line-height: 1.45; }
+  .waiting-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .waiting-row {
+    display: flex; align-items: center; gap: 0.7rem;
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 0.6rem 0.8rem; cursor: pointer;
+    box-shadow: var(--card-shadow);
+  }
+  .waiting-row:active { background: var(--bg-hover); }
+  .waiting-main { min-width: 0; }
+  .waiting-name { font-weight: 700; font-size: 1.02rem; }
+  .waiting-meta { color: var(--text-dim); font-size: 0.78rem; }
+  .waiting-right { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; flex: none; }
+  .walkin-tag {
+    font-size: 0.66rem; font-weight: 600; color: var(--chip-info-text); background: var(--chip-info-bg);
+    border-radius: 99px; padding: 0.08rem 0.4rem; margin-left: 0.4rem; vertical-align: middle;
+  }
+
+  /* ---------- schedule ---------- */
+  .schedule-panel {
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 0.9rem;
+    box-shadow: var(--card-shadow);
+  }
+  .walkin-form { display: none; flex-direction: column; gap: 0.5rem; margin-top: 0.7rem; }
+  .walkin-form.open { display: flex; }
+  .walkin-form input {
+    background: var(--bg); border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: 0.55rem 0.65rem; font-size: 16px; font-family: inherit;
+  }
+  .walkin-actions { display: flex; gap: 0.5rem; }
+  .walkin-toggle { margin-top: 0.7rem; }
+
+  /* ---------- bottom sheet / panel ---------- */
+  .sheet-backdrop {
+    position: fixed; inset: 0; background: var(--backdrop);
+    z-index: 30; display: none;
+  }
+  .sheet-backdrop.open { display: flex; align-items: flex-end; justify-content: center; }
+  @media (min-width: 640px) { .sheet-backdrop.open { align-items: center; } }
+  .sheet {
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: 16px 16px 0 0; padding: 1rem 1.1rem calc(1rem + env(safe-area-inset-bottom));
+    width: 100%; max-width: 640px; max-height: 82vh; overflow-y: auto;
+  }
+  @media (min-width: 640px) { .sheet { border-radius: 14px; width: 420px; padding-bottom: 1rem; } }
+  .sheet-grip { width: 38px; height: 4px; border-radius: 99px; background: var(--line); margin: 0 auto 0.7rem; }
+  @media (min-width: 640px) { .sheet-grip { display: none; } }
+  .sheet-head { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.7rem; }
+  .sheet-name { font-size: 1.3rem; font-weight: 700; }
+  .sheet-context { color: var(--accent); font-size: 0.82rem; }
+  .sheet-details { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 1rem; margin: 0 0 0.9rem; }
+  .sheet-details dt { color: var(--text-dim); font-size: 0.82rem; }
+  .sheet-details dd { margin: 0; font-size: 0.92rem; }
+  .sheet-section { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.11em; color: var(--text-dim); margin: 0.9rem 0 0.45rem; }
+  .sheet-actions { display: flex; flex-direction: column; gap: 0.45rem; }
+  .sheet-actions .btn { text-align: left; }
+  .sheet-note { margin-top: 0.9rem; color: var(--text-dim); font-size: 0.72rem; font-style: italic; }
+
+  .footer {
+    padding: 0.7rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
+    color: var(--text-dim); font-size: 0.74rem; border-top: 1px solid var(--line);
+    margin-top: 1rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet { animation: rise 0.18s ease-out; }
+    @keyframes rise { from { transform: translateY(14px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+  }
+</style>
+
+<header class="header">
+  <div class="brand">
+    <span class="brand-mark">◑</span>
+    <span class="brand-name">Meridian</span>
+    <span class="brand-sub">Thornberry Medical · Beaufort, South Carolina (Demo)</span>
+  </div>
+  <span class="clock" id="clock">—</span>
+  <div class="header-controls">
+    <button class="icon-toggle" id="soundToggle" title="Play a chime when a new request flag is raised">🔕 Chime off</button>
+    <button class="icon-toggle" id="themeToggle" title="Switch between light and dark board">☾ Dark board</button>
+    <label class="sim-toggle" title="When on, synthetic patients move through the clinic automatically">
+      <input type="checkbox" id="simToggle" checked />
+      <span id="simLabel">Simulation on</span>
+    </label>
+    <button class="btn btn-small btn-ghost" id="resetBtn">Reset</button>
+  </div>
+</header>
+<div class="statbar" id="statbar"></div>
+<div class="demo-note">
+  <b>Interactive demo.</b> Every patient here is synthetic — tap any room or name to see details and take actions, or let the simulation run the clinic for you.
+</div>
+
+<main class="layout">
+  <section>
+    <h2 class="section-title">Exam rooms</h2>
+    <div class="room-grid" id="roomGrid"></div>
+  </section>
+
+  <aside>
+    <div class="schedule-panel">
+      <h2 class="section-title">Checked in <span class="count-pill" id="waitCount">0</span></h2>
+      <p class="panel-hint">
+        Patients appear here when they're checked in — fed from the EMR in a
+        real clinic, simulated in this demo. Pick a room to place them.
+      </p>
+      <div class="waiting-list" id="waitingList"></div>
+      <button class="btn btn-ghost btn-block walkin-toggle" id="walkinToggle">+ Add patient manually</button>
+      <form class="walkin-form" id="walkinForm">
+        <input required placeholder="First name" id="wiFirst" autocomplete="off" />
+        <input required placeholder="Last initial" maxlength="1" id="wiLast" autocomplete="off" />
+        <input placeholder="Reason for visit" id="wiReason" autocomplete="off" />
+        <div class="walkin-actions">
+          <button type="submit" class="btn btn-small btn-primary">Add to queue</button>
+          <button type="button" class="btn btn-small btn-ghost" id="walkinCancel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </aside>
+</main>
+
+<div class="sheet-backdrop" id="sheetBackdrop">
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+</div>
+
+<footer class="footer">
+  Demo environment — all patient data is synthetic. No real PHI is stored or displayed. Runs entirely in your browser.
+</footer>
+
+<script>
+'use strict';
+
+/* ================= configuration ================= */
+const THRESHOLDS = { warnMinutes: 10, alertMinutes: 20 };
+const SIM_TICK_MS = 4000;
+const PACE = { minVisitSeconds: 40, minFlagClaimSeconds: 8, minFlagAgeSeconds: 20, maxWaiting: 5 };
+
+const FLAG_META = {
+  patient_waiting:    { label: 'Patient waiting',    tone: 'warn' },
+  needs_assistance:   { label: 'Needs assistance',   tone: 'alert' },
+  needs_supplies:     { label: 'Needs supplies',     tone: 'warn' },
+  ready_for_provider: { label: 'Ready for provider', tone: 'info' },
+  checkout_ready:     { label: 'Checkout ready',     tone: 'ok' },
+};
+
+/* ================= synthetic data ================= */
+const FIRST_NAMES = ['Ava','Ben','Clara','Dev','Elena','Felix','Grace','Hugo','Iris','Jonah','Kai','Lena','Marco','Nadia','Oscar','Priya','Quinn','Rosa','Sam','Tessa','Umar','Vera','Wes','Ximena','Yusuf','Zoe'];
+const LAST_INITIALS = 'ABCDEFGHJKLMNPRSTVW'.split('');
+const VISIT_REASONS = ['Annual checkup','Ankle follow-up','Blood pressure check','Flu symptoms','Knee pain','Lab results review','Medication refill','Migraine consult','Physical for work','Rash evaluation','Shoulder strain','Sinus infection','Sports physical','Vaccination','Wellness visit','Back pain follow-up'];
+const PROVIDERS = ['Dr. Ashford','Dr. Ibarra','Dr. Okafor','PA Whitfield'];
+const STAFF = ['Jamie','Renee','Marcus','Dee'];
+const ROOM_NAMES = ['Exam 1','Exam 2','Exam 3','Exam 4','Exam 5','Exam 6'];
+
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const randInt = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
+const chance = (p) => Math.random() < p;
+
+function fakePatient() {
+  const y = randInt(1945, 2007), m = String(randInt(1,12)).padStart(2,'0'), d = String(randInt(1,28)).padStart(2,'0');
+  return {
+    first_name: pick(FIRST_NAMES),
+    last_initial: pick(LAST_INITIALS),
+    date_of_birth: y + '-' + m + '-' + d,
+    reason_for_visit: pick(VISIT_REASONS),
+    phone: '(555) 01' + randInt(0,9) + '-' + String(randInt(0,9999)).padStart(4,'0'),
+  };
+}
+
+/* ================= in-browser clinic state ================= */
+let nextId = 1;
+const S = { patients: [], appts: [], rooms: [], flags: [], sim: true, checkedOut: 0 };
+let soundOn = false;
+
+const apptById = (id) => S.appts.find((a) => a.id === id);
+const roomById = (id) => S.rooms.find((r) => r.id === id);
+const patientOf = (appt) => S.patients.find((p) => p.id === appt.patient_id);
+const activeFlags = (roomId) => S.flags.filter((f) => f.room_id === roomId && !f.resolved_at);
+const byStatus = (st) => S.appts.filter((a) => a.status === st);
+
+/* -------- chime (WebAudio, no assets) -------- */
+let audioCtx;
+function chime() {
+  if (!soundOn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t = audioCtx.currentTime;
+    for (const pair of [[880, 0], [1174.66, 0.14]]) {
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.type = 'sine'; osc.frequency.value = pair[0];
+      gain.gain.setValueAtTime(0.0001, t + pair[1]);
+      gain.gain.exponentialRampToValueAtTime(0.14, t + pair[1] + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + pair[1] + 0.4);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t + pair[1]); osc.stop(t + pair[1] + 0.45);
+    }
+  } catch (e) { /* audio unavailable — stay silent */ }
+}
+
+/* -------- transitions (same rules as the server version) -------- */
+function createPatientWithAppointment(opts) {
+  opts = opts || {};
+  const base = fakePatient();
+  const patient = Object.assign(base, {
+    id: nextId++,
+    first_name: (opts.first_name || '').trim() || base.first_name,
+    last_initial: ((opts.last_initial || '').trim() || base.last_initial).slice(0,1).toUpperCase(),
+    reason_for_visit: (opts.reason_for_visit || '').trim() || base.reason_for_visit,
+  });
+  S.patients.push(patient);
+  const appt = {
+    id: nextId++, patient_id: patient.id,
+    appt_time: opts.appt_time || Date.now(),
+    provider_name: pick(PROVIDERS),
+    status: 'scheduled', room_id: null, is_walk_in: !!opts.is_walk_in,
+    checked_in_at: null, roomed_at: null, checked_out_at: null,
+  };
+  S.appts.push(appt);
+  return appt;
+}
+
+function checkIn(apptId) {
+  const a = apptById(apptId);
+  if (!a || a.status !== 'scheduled') return;
+  a.status = 'waiting_room';
+  a.checked_in_at = Date.now();
+}
+
+function assignRoom(apptId, roomId) {
+  const a = apptById(apptId), r = roomById(roomId);
+  if (!a || a.status !== 'waiting_room' || !r || r.status !== 'empty') return;
+  a.status = 'roomed'; a.room_id = r.id; a.roomed_at = Date.now();
+  r.status = 'occupied'; r.current_appointment_id = a.id;
+}
+
+function checkout(apptId, needsCleaning) {
+  const a = apptById(apptId);
+  if (!a || (a.status !== 'roomed' && a.status !== 'ready_for_checkout')) return;
+  a.status = 'checked_out'; a.checked_out_at = Date.now();
+  S.checkedOut++;
+  if (a.room_id != null) {
+    const r = roomById(a.room_id);
+    r.status = needsCleaning === false ? 'empty' : 'needs_cleaning';
+    r.current_appointment_id = null;
+    // a freed room never keeps its previous occupant's flags
+    activeFlags(r.id).forEach((f) => { f.resolved_at = Date.now(); });
+  }
+}
+
+function markClean(roomId) {
+  const r = roomById(roomId);
+  if (r && r.status === 'needs_cleaning') r.status = 'empty';
+}
+
+function raiseFlag(roomId, type) {
+  const r = roomById(roomId);
+  if (!r || r.status !== 'occupied' || !FLAG_META[type]) return;
+  if (activeFlags(roomId).some((f) => f.request_type === type)) return;
+  S.flags.push({ id: nextId++, room_id: roomId, request_type: type, created_at: Date.now(), taken_by: null, resolved_at: null });
+  chime();
+}
+
+function claimFlag(flagId, name) {
+  const f = S.flags.find((x) => x.id === flagId);
+  if (f && !f.resolved_at && !f.taken_by) f.taken_by = name || pick(STAFF);
+}
+
+function resolveFlag(flagId) {
+  const f = S.flags.find((x) => x.id === flagId);
+  if (f && !f.resolved_at) f.resolved_at = Date.now();
+}
+
+/* -------- seed -------- */
+function seed() {
+  nextId = 1;
+  S.patients = []; S.appts = []; S.flags = []; S.checkedOut = 0;
+  S.rooms = ROOM_NAMES.map((name) => ({ id: nextId++, name: name, status: 'empty', current_appointment_id: null }));
+  const now = Date.now(), MIN = 60000;
+
+  for (let i = 0; i < 4; i++) {
+    const a = createPatientWithAppointment({ appt_time: now - randInt(0, 20) * MIN });
+    a.status = 'waiting_room';
+    a.checked_in_at = now - randInt(2, 15) * MIN;
+  }
+
+  // staggered so green / amber / red are all visible immediately
+  const elapsed = [3, 12, 24];
+  for (let i = 0; i < elapsed.length; i++) {
+    const a = createPatientWithAppointment({ appt_time: now - randInt(20, 40) * MIN });
+    const r = S.rooms[i];
+    a.status = 'roomed'; a.room_id = r.id;
+    a.roomed_at = now - elapsed[i] * MIN;
+    a.checked_in_at = a.roomed_at - randInt(3, 10) * MIN;
+    r.status = 'occupied'; r.current_appointment_id = a.id;
+  }
+  raiseFlag(S.rooms[1].id, pick(['ready_for_provider','needs_assistance','patient_waiting']));
+  // backdate the seeded flag so its elapsed timer reads meaningfully
+  S.flags.forEach((f) => { f.created_at = now - 2 * MIN; });
+}
+
+/* -------- simulation loop -------- */
+const ageSec = (ts) => (Date.now() - ts) / 1000;
+
+function simTick() {
+  if (!S.sim) return;
+  const waiting = byStatus('waiting_room').sort((a,b) => a.checked_in_at - b.checked_in_at);
+  const roomed = byStatus('roomed');
+  const emptyRooms = S.rooms.filter((r) => r.status === 'empty');
+  const dirtyRooms = S.rooms.filter((r) => r.status === 'needs_cleaning');
+  const openFlags = S.flags.filter((f) => !f.resolved_at);
+
+  // The EMR feed: patients arrive on the board already checked in. The board
+  // never owns scheduling — in production this comes from the EMR's check-in
+  // event; here the sim plays the EMR.
+  if (waiting.length < PACE.maxWaiting && chance(0.45)) {
+    const a = createPatientWithAppointment({ appt_time: Date.now() + randInt(-10, 15) * 60000 });
+    checkIn(a.id);
+  }
+
+  if (waiting.length > 0 && emptyRooms.length > 0 && chance(0.6))
+    assignRoom(waiting[0].id, pick(emptyRooms).id);
+
+  if (roomed.length > 0 && chance(0.2))
+    raiseFlag(pick(roomed).room_id, pick(['patient_waiting','needs_assistance','needs_supplies','ready_for_provider','checkout_ready']));
+
+  // staff acknowledge ("take") a request first, then resolve it
+  openFlags.forEach((f) => {
+    if (!f.taken_by && ageSec(f.created_at) > PACE.minFlagClaimSeconds && chance(0.5)) claimFlag(f.id);
+    else if (f.taken_by && ageSec(f.created_at) > PACE.minFlagAgeSeconds && chance(0.45)) resolveFlag(f.id);
+  });
+
+  // Visits wrap up: checkout frees the room (sometimes flagged for cleaning).
+  for (const a of roomed) {
+    if (ageSec(a.roomed_at) > PACE.minVisitSeconds && chance(0.3)) { checkout(a.id, chance(0.6) ? true : false); break; }
+  }
+
+  if (dirtyRooms.length > 0 && chance(0.5)) markClean(pick(dirtyRooms).id);
+}
+
+/* ================= formatting ================= */
+const displayName = (p) => p.first_name + ' ' + p.last_initial + '.';
+const fmtClock = (ts) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+function minutesSince(ts) { return Math.max(0, (Date.now() - ts) / 60000); }
+function fmtElapsed(ts) {
+  const total = Math.floor(minutesSince(ts) * 60);
+  const m = Math.floor(total / 60), s = total % 60;
+  if (m >= 60) return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+  return m + ':' + String(s).padStart(2, '0');
+}
+function tone(ts) {
+  const m = minutesSince(ts);
+  if (m >= THRESHOLDS.alertMinutes) return 'alert';
+  if (m >= THRESHOLDS.warnMinutes) return 'warn';
+  return 'ok';
+}
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+/* ================= rendering ================= */
+const $ = (id) => document.getElementById(id);
+let sheetRef = null; // { kind: 'room'|'appt', id }
+
+function render() {
+  renderStats();
+  renderRooms();
+  renderWaiting();
+  renderSheet();
+}
+
+function renderStats() {
+  const occupied = S.rooms.filter((r) => r.status === 'occupied').length;
+  $('statbar').innerHTML =
+    '<span><strong>' + occupied + '</strong>/' + S.rooms.length + ' rooms</span>' +
+    '<span><strong>' + byStatus('waiting_room').length + '</strong> waiting</span>' +
+    '<span><strong>' + S.checkedOut + '</strong> seen today</span>';
+}
+
+function flagChips(roomId) {
+  return activeFlags(roomId).map((f) => {
+    const meta = FLAG_META[f.request_type];
+    return '<span class="flag flag-' + meta.tone + '">' + meta.label +
+      '<span class="flag-age" data-since="' + f.created_at + '" title="How long this request has been open">' + fmtElapsed(f.created_at) + '</span>' +
+      (f.taken_by
+        ? '<span class="flag-taken" title="Taken by ' + f.taken_by + '">· ' + f.taken_by + '</span>'
+        : '<button class="flag-btn" data-act="claim-flag" data-id="' + f.id + '" title="Take this request">Take</button>') +
+      '<button class="flag-btn" data-act="resolve-flag" data-id="' + f.id + '" title="Resolve" aria-label="Resolve ' + meta.label + '">✓</button></span>';
+  }).join('');
+}
+
+function renderRooms() {
+  $('roomGrid').innerHTML = S.rooms.map((r) => {
+    if (r.status === 'empty') {
+      return '<div class="room-card"><div class="room-head"><span class="room-name">' + r.name +
+        '</span><span class="room-empty-label">Open</span></div></div>';
+    }
+    if (r.status === 'needs_cleaning') {
+      return '<div class="room-card tone-clean"><div class="room-head"><span class="room-name">' + r.name +
+        '</span><span class="room-empty-label">Needs cleaning</span></div>' +
+        '<div class="room-actions"><button class="btn btn-small" data-act="clean" data-id="' + r.id + '">Mark clean</button></div></div>';
+    }
+    const a = apptById(r.current_appointment_id), p = patientOf(a);
+    const t = tone(a.roomed_at);
+    const hasAlert = activeFlags(r.id).some((f) => FLAG_META[f.request_type].tone === 'alert');
+    const action = '<button class="btn btn-small btn-primary" data-act="checkout" data-id="' + a.id + '">Checkout</button>';
+    return '<div class="room-card tappable tone-' + (hasAlert ? 'alert' : t) + '" data-act="open-room" data-id="' + r.id + '">' +
+      '<div class="room-head"><span class="room-name">' + r.name + '</span>' +
+      '<span class="elapsed elapsed-' + t + '" data-since="' + a.roomed_at + '" title="Time in room">' + fmtElapsed(a.roomed_at) + '</span></div>' +
+      '<div class="room-patient">' + esc(displayName(p)) + '</div>' +
+      '<div class="room-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</div>' +
+      (activeFlags(r.id).length ? '<div class="room-flags">' + flagChips(r.id) + '</div>' : '') +
+      '<div class="room-actions">' + action + '</div></div>';
+  }).join('');
+}
+
+function renderWaiting() {
+  const waiting = byStatus('waiting_room').sort((a,b) => a.checked_in_at - b.checked_in_at);
+  $('waitCount').textContent = waiting.length;
+  $('waitingList').innerHTML = waiting.length === 0
+    ? '<div class="empty-note">No one is waiting.</div>'
+    : waiting.map((a) => {
+        const p = patientOf(a), t = tone(a.checked_in_at);
+        return '<div class="waiting-row" data-act="open-appt" data-id="' + a.id + '">' +
+          '<div class="waiting-main"><div class="waiting-name">' + esc(displayName(p)) +
+          (a.is_walk_in ? '<span class="walkin-tag">manual</span>' : '') + '</div>' +
+          '<div class="waiting-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</div></div>' +
+          '<div class="waiting-right"><span class="elapsed elapsed-' + t + '" data-since="' + a.checked_in_at + '" data-kind="wait">' + fmtElapsed(a.checked_in_at) + '</span>' +
+          '<button class="btn btn-small btn-primary" data-act="open-appt" data-id="' + a.id + '">Room…</button></div></div>';
+      }).join('');
+}
+
+/* -------- bottom sheet -------- */
+function openSheet(kind, id) { sheetRef = { kind: kind, id: id }; renderSheet(); }
+function closeSheet() { sheetRef = null; renderSheet(); }
+
+function sheetPatientBlock(p, a, context) {
+  return '<div class="sheet-grip"></div>' +
+    '<div class="sheet-head"><div><div class="sheet-name">' + esc(displayName(p)) + '</div>' +
+    '<div class="sheet-context">' + context + '</div></div>' +
+    '<button class="btn btn-small btn-ghost" data-act="close-sheet" aria-label="Close">✕</button></div>' +
+    '<dl class="sheet-details">' +
+    '<dt>Reason for visit</dt><dd>' + esc(p.reason_for_visit) + '</dd>' +
+    '<dt>Provider</dt><dd>' + a.provider_name + '</dd>' +
+    '<dt>Appointment</dt><dd>' + fmtClock(a.appt_time) + '</dd>' +
+    '<dt>Date of birth</dt><dd>' + p.date_of_birth + '</dd>' +
+    '<dt>Phone</dt><dd>' + p.phone + '</dd></dl>';
+}
+
+function renderSheet() {
+  const backdrop = $('sheetBackdrop');
+  if (!sheetRef) { backdrop.classList.remove('open'); return; }
+
+  let html = null;
+  if (sheetRef.kind === 'room') {
+    const r = roomById(sheetRef.id);
+    if (r && r.status === 'occupied') {
+      const a = apptById(r.current_appointment_id), p = patientOf(a);
+      const flagBtns = Object.keys(FLAG_META)
+        .filter((type) => !activeFlags(r.id).some((f) => f.request_type === type))
+        .map((type) => '<button class="btn btn-small" data-act="flag" data-room="' + r.id + '" data-type="' + type + '">' + FLAG_META[type].label + '</button>')
+        .join(' ');
+      html = sheetPatientBlock(p, a, r.name + ' · in room <span data-since="' + a.roomed_at + '">' + fmtElapsed(a.roomed_at) + '</span>') +
+        (activeFlags(r.id).length ? '<div class="sheet-section">Active flags</div><div class="room-flags">' + flagChips(r.id) + '</div>' : '') +
+        '<div class="sheet-section">Raise a flag</div><div class="room-actions">' + flagBtns + '</div>' +
+        '<div class="sheet-section">Visit</div><div class="sheet-actions">' +
+        '<button class="btn btn-primary" data-act="checkout" data-id="' + a.id + '">Checkout — free the room</button>' +
+        '</div><div class="sheet-note">Synthetic demo record — not a real person.</div>';
+    }
+  } else if (sheetRef.kind === 'appt') {
+    const a = apptById(sheetRef.id);
+    if (a && a.status === 'waiting_room') {
+      const p = patientOf(a);
+      const open = S.rooms.filter((r) => r.status === 'empty');
+      html = sheetPatientBlock(p, a, 'Checked in · waiting <span data-since="' + a.checked_in_at + '">' + fmtElapsed(a.checked_in_at) + '</span>') +
+        '<div class="sheet-section">Assign to room</div><div class="sheet-actions">' +
+        (open.length === 0 ? '<div class="empty-note">No open rooms right now.</div>'
+          : open.map((r) => '<button class="btn" data-act="assign" data-id="' + a.id + '" data-room="' + r.id + '">' + r.name + '</button>').join('')) +
+        '</div><div class="sheet-note">Synthetic demo record — not a real person.</div>';
+    }
+  }
+
+  // the entity moved on (e.g. the sim checked them out) — close quietly
+  if (html === null) { sheetRef = null; backdrop.classList.remove('open'); return; }
+  backdrop.classList.add('open');
+  $('sheet').innerHTML = html;
+}
+
+/* -------- per-second timers (no full re-render, keeps taps stable) -------- */
+function updateTimers() {
+  $('clock').textContent = fmtClock(Date.now());
+  document.querySelectorAll('[data-since]').forEach((el) => {
+    const ts = Number(el.getAttribute('data-since'));
+    el.textContent = fmtElapsed(ts);
+    if (el.classList.contains('elapsed')) {
+      el.classList.remove('elapsed-ok', 'elapsed-warn', 'elapsed-alert');
+      el.classList.add('elapsed-' + tone(ts));
+    }
+  });
+}
+
+/* ================= event wiring ================= */
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.getAttribute('data-act');
+  const id = Number(el.getAttribute('data-id'));
+  e.stopPropagation();
+
+  if (act === 'assign') { assignRoom(id, Number(el.getAttribute('data-room'))); closeSheet(); }
+  else if (act === 'checkout') { checkout(id); closeSheet(); }
+  else if (act === 'clean') markClean(id);
+  else if (act === 'flag') raiseFlag(Number(el.getAttribute('data-room')), el.getAttribute('data-type'));
+  else if (act === 'claim-flag') claimFlag(id);
+  else if (act === 'resolve-flag') resolveFlag(id);
+  else if (act === 'open-room') openSheet('room', id);
+  else if (act === 'open-appt') openSheet('appt', id);
+  else if (act === 'close-sheet') { closeSheet(); return; }
+  render();
+});
+
+$('sheetBackdrop').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSheet(); });
+
+$('simToggle').addEventListener('change', (e) => {
+  S.sim = e.target.checked;
+  $('simLabel').textContent = 'Simulation ' + (S.sim ? 'on' : 'off');
+});
+
+$('soundToggle').addEventListener('click', () => {
+  soundOn = !soundOn;
+  const btn = $('soundToggle');
+  btn.textContent = soundOn ? '🔔 Chime on' : '🔕 Chime off';
+  btn.classList.toggle('active', soundOn);
+  if (soundOn) chime(); // audible confirmation + unlocks audio on this gesture
+});
+
+$('themeToggle').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = getComputedStyle(root).getPropertyValue('color-scheme').trim() === 'dark';
+  root.dataset.theme = dark ? 'light' : 'dark';
+  $('themeToggle').textContent = dark ? '☾ Dark board' : '☀ Light board';
+});
+
+$('resetBtn').addEventListener('click', () => {
+  if (confirm('Clear all demo data and reseed with fresh fake patients?')) { seed(); render(); }
+});
+
+$('walkinToggle').addEventListener('click', () => {
+  $('walkinForm').classList.add('open');
+  $('walkinToggle').style.display = 'none';
+  $('wiFirst').focus();
+});
+$('walkinCancel').addEventListener('click', () => {
+  $('walkinForm').classList.remove('open');
+  $('walkinToggle').style.display = '';
+});
+$('walkinForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const a = createPatientWithAppointment({
+    first_name: $('wiFirst').value, last_initial: $('wiLast').value,
+    reason_for_visit: $('wiReason').value, is_walk_in: true,
+  });
+  checkIn(a.id);
+  $('wiFirst').value = ''; $('wiLast').value = ''; $('wiReason').value = '';
+  $('walkinForm').classList.remove('open');
+  $('walkinToggle').style.display = '';
+  render();
+});
+
+/* ================= boot ================= */
+seed();
+render();
+updateTimers();
+setInterval(updateTimers, 1000);
+setInterval(() => { simTick(); render(); }, SIM_TICK_MS);
+</script>
