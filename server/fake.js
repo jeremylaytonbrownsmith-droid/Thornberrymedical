@@ -10,10 +10,10 @@ const FIRST_NAMES = [
 const LAST_INITIALS = 'ABCDEFGHJKLMNPRSTVW'.split('');
 
 const VISIT_REASONS = [
-  'Annual checkup', 'Ankle follow-up', 'Blood pressure check', 'Flu symptoms',
-  'Knee pain', 'Lab results review', 'Medication refill', 'Migraine consult',
-  'Physical for work', 'Rash evaluation', 'Shoulder strain', 'Sinus infection',
-  'Sports physical', 'Vaccination', 'Wellness visit', 'Back pain follow-up',
+  'Ankle sprain follow-up', 'Ingrown toenail', 'Heel pain', 'Plantar fasciitis',
+  'Bunion evaluation', 'Diabetic foot check', 'Orthotics fitting', 'Wart treatment',
+  'Achilles tendinitis', 'Fracture follow-up', 'Neuroma pain', 'Post-op check',
+  'Toenail fungus', 'Flat feet consult', 'Corn and callus care', 'Gout flare-up',
 ];
 
 const PROVIDERS = ['Dr. Ashford', 'Dr. Ibarra', 'Dr. Okafor', 'PA Whitfield'];
@@ -21,12 +21,18 @@ const PROVIDERS = ['Dr. Ashford', 'Dr. Ibarra', 'Dr. Okafor', 'PA Whitfield'];
 // Front-desk / MA staff who can claim ("take") a request flag.
 export const STAFF = ['Jamie', 'Renee', 'Marcus', 'Dee'];
 
-export const ROOM_NAMES = ['Exam 1', 'Exam 2', 'Exam 3', 'Exam 4', 'Exam 5', 'Exam 6'];
+export const ROOM_NAMES = ['Exam 1', 'Exam 2', 'Exam 3', 'Exam 4'];
 
 export const REQUEST_TYPES = [
   'patient_waiting',
   'needs_assistance',
   'needs_supplies',
+  'needs_injection',
+  'needs_xray',
+  'wound_care',
+  'procedure_setup',
+  'boot_fitting',
+  'needs_casting',
   'ready_for_provider',
   'checkout_ready',
 ];

@@ -3,7 +3,7 @@
 // within seconds) while leaving every manual control fully usable.
 import { db, nowIso } from './db.js';
 import * as svc from './services.js';
-import { pick, randInt } from './fake.js';
+import { pick, randInt, REQUEST_TYPES } from './fake.js';
 
 const TICK_MS = 4000;
 
@@ -55,7 +55,7 @@ function tick() {
     // Occasionally a room raises a request flag.
     if (roomed.length > 0 && chance(0.2)) {
       const target = pick(roomed);
-      svc.raiseFlag(target.room_id, pick(['patient_waiting', 'needs_assistance', 'needs_supplies', 'ready_for_provider', 'checkout_ready']));
+      svc.raiseFlag(target.room_id, pick(REQUEST_TYPES));
     }
 
     // Staff work the flags down: first someone takes the request, then it

@@ -27,7 +27,7 @@ await post('/api/sim', { enabled: false });
 await post('/api/reset');
 
 let state = await get('/api/state');
-ok(state.rooms.length === 6, `reseed: ${state.rooms.length} rooms created`);
+ok(state.rooms.length === 4, `reseed: ${state.rooms.length} rooms created`);
 ok(state.scheduled.length > 0, `reseed: ${state.scheduled.length} scheduled patients`);
 ok(state.waiting.length > 0, `reseed: ${state.waiting.length} in waiting room`);
 ok(state.rooms.some((r) => r.status === 'occupied'), 'reseed: some rooms occupied');

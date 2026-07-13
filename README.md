@@ -67,8 +67,11 @@ desk). The standalone file is the "text someone a link" version.
   live **time-in-room** counter. The counter and card edge are green while on
   time, amber past 10 minutes, red past 20 (thresholds in
   `client/src/config.js`).
-- **Flags** — `+ Flag` on an occupied room raises a request (patient waiting,
-  needs assistance, needs supplies, ready for provider, checkout ready). Flags
+- **Flags** — `+ Flag` on an occupied room raises a request. The set is
+  tuned for a podiatry practice (patient waiting, needs assistance, needs
+  supplies, needs injection, needs X-ray, wound care, procedure setup, boot
+  fitting, orthotics casting, ready for provider, checkout ready) and lives in
+  `server/fake.js` + `client/src/config.js`, so it's easy to extend. Flags
   show as colored chips with a live **elapsed timer** (how long the request has
   been open). **Take** claims the request under a staff member's name —
   acknowledge first, resolve second, so the board always shows who owns an open
@@ -108,7 +111,7 @@ sim can never put the board in a state staff couldn't reach by hand.
 - **API:** `curl -X POST localhost:4000/api/reset`
 - **Full wipe:** stop the server and delete `server/data/` — it reseeds on boot.
 
-Reseeding creates 6 rooms, a fresh schedule, a few patients already waiting,
+Reseeding creates 4 rooms, a fresh schedule, a few patients already waiting,
 and three already roomed with staggered times (3/12/24 min) so the
 green/amber/red states are all visible immediately.
 

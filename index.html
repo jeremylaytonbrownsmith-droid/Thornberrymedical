@@ -359,6 +359,12 @@ const FLAG_META = {
   patient_waiting:    { label: 'Patient waiting',    tone: 'warn' },
   needs_assistance:   { label: 'Needs assistance',   tone: 'alert' },
   needs_supplies:     { label: 'Needs supplies',     tone: 'warn' },
+  needs_injection:    { label: 'Needs injection',    tone: 'info' },
+  needs_xray:         { label: 'Needs X-ray',        tone: 'info' },
+  wound_care:         { label: 'Wound care',         tone: 'warn' },
+  procedure_setup:    { label: 'Procedure setup',    tone: 'warn' },
+  boot_fitting:       { label: 'Boot fitting',       tone: 'info' },
+  needs_casting:      { label: 'Orthotics casting',  tone: 'info' },
   ready_for_provider: { label: 'Ready for provider', tone: 'info' },
   checkout_ready:     { label: 'Checkout ready',     tone: 'ok' },
 };
@@ -366,10 +372,10 @@ const FLAG_META = {
 /* ================= synthetic data ================= */
 const FIRST_NAMES = ['Ava','Ben','Clara','Dev','Elena','Felix','Grace','Hugo','Iris','Jonah','Kai','Lena','Marco','Nadia','Oscar','Priya','Quinn','Rosa','Sam','Tessa','Umar','Vera','Wes','Ximena','Yusuf','Zoe'];
 const LAST_INITIALS = 'ABCDEFGHJKLMNPRSTVW'.split('');
-const VISIT_REASONS = ['Annual checkup','Ankle follow-up','Blood pressure check','Flu symptoms','Knee pain','Lab results review','Medication refill','Migraine consult','Physical for work','Rash evaluation','Shoulder strain','Sinus infection','Sports physical','Vaccination','Wellness visit','Back pain follow-up'];
+const VISIT_REASONS = ['Ankle sprain follow-up','Ingrown toenail','Heel pain','Plantar fasciitis','Bunion evaluation','Diabetic foot check','Orthotics fitting','Wart treatment','Achilles tendinitis','Fracture follow-up','Neuroma pain','Post-op check','Toenail fungus','Flat feet consult','Corn and callus care','Gout flare-up'];
 const PROVIDERS = ['Dr. Ashford','Dr. Ibarra','Dr. Okafor','PA Whitfield'];
 const STAFF = ['Jamie','Renee','Marcus','Dee'];
-const ROOM_NAMES = ['Exam 1','Exam 2','Exam 3','Exam 4','Exam 5','Exam 6'];
+const ROOM_NAMES = ['Exam 1','Exam 2','Exam 3','Exam 4'];
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const randInt = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
@@ -541,7 +547,7 @@ function simTick() {
     assignRoom(waiting[0].id, pick(emptyRooms).id);
 
   if (roomed.length > 0 && chance(0.2))
-    raiseFlag(pick(roomed).room_id, pick(['patient_waiting','needs_assistance','needs_supplies','ready_for_provider','checkout_ready']));
+    raiseFlag(pick(roomed).room_id, pick(Object.keys(FLAG_META)));
 
   // staff acknowledge ("take") a request first, then resolve it
   openFlags.forEach((f) => {
