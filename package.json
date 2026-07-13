@@ -1,0 +1,23 @@
+{
+  "name": "meridian-flow-board",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Meridian — a patient-flow board demo for a small medical practice front desk. Synthetic data only.",
+  "type": "module",
+  "scripts": {
+    "postinstall": "npm --prefix client install",
+    "dev": "concurrently -n server,client -c cyan,magenta \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "node server/index.js",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "start": "node server/index.js",
+    "verify": "node scripts/verify-lifecycle.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

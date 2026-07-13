@@ -1,0 +1,299 @@
+/* Meridian — patient flow board. Dark, high-contrast, legible from across a room. */
+
+:root {
+  --bg: #0e1420;
+  --bg-raised: #172033;
+  --bg-hover: #1d2941;
+  --line: #263450;
+  --text: #e8edf6;
+  --text-dim: #8a97ad;
+  --accent: #35c2b0;
+  --accent-dim: #1e6f66;
+  --ok: #4fc07a;
+  --warn: #e8b73a;
+  --alert: #e85d5d;
+  --info: #5aa9e6;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.boot { padding: 4rem; text-align: center; color: var(--text-dim); font-size: 1.2rem; }
+
+/* ---------- header ---------- */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.9rem 1.4rem;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.brand { display: flex; align-items: baseline; gap: 0.55rem; }
+.brand-mark { color: var(--accent); font-size: 1.5rem; align-self: center; }
+.brand-name {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.brand-sub { color: var(--text-dim); font-size: 0.85rem; }
+.header-stats {
+  display: flex;
+  gap: 1.2rem;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  margin-left: auto;
+}
+.header-stats strong { color: var(--text); font-size: 1.1rem; }
+.header-controls { display: flex; align-items: center; gap: 1rem; }
+.clock { font-size: 1.35rem; font-variant-numeric: tabular-nums; font-weight: 600; }
+.sim-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+.sim-toggle input { accent-color: var(--accent); width: 1.05rem; height: 1.05rem; cursor: pointer; }
+
+.error-banner {
+  background: #47222a;
+  color: #ffb4b4;
+  padding: 0.5rem 1.4rem;
+  font-size: 0.9rem;
+}
+
+/* ---------- layout ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.4rem;
+  padding: 1.4rem;
+  flex: 1;
+  align-items: start;
+}
+@media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+
+.section-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  margin: 0 0 0.7rem;
+}
+.count-pill {
+  background: var(--accent-dim);
+  color: var(--text);
+  border-radius: 99px;
+  padding: 0.05rem 0.55rem;
+  font-size: 0.8rem;
+  margin-left: 0.3rem;
+}
+.empty-note { color: var(--text-dim); padding: 0.8rem 0; }
+
+/* ---------- room grid ---------- */
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.9rem;
+}
+.room-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.8rem 0.9rem;
+  min-height: 128px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.room-occupied { cursor: pointer; }
+.room-occupied:hover { background: var(--bg-hover); }
+.room-card.tone-ok { border-left-color: var(--ok); }
+.room-card.tone-warn { border-left-color: var(--warn); }
+.room-card.tone-alert { border-left-color: var(--alert); box-shadow: 0 0 0 1px var(--alert); }
+.room-needs_cleaning { border-left-color: var(--info); opacity: 0.9; }
+
+.room-head { display: flex; justify-content: space-between; align-items: baseline; }
+.room-name { font-weight: 700; letter-spacing: 0.03em; }
+.room-empty-label { color: var(--text-dim); font-size: 0.85rem; }
+.room-patient { font-size: 1.5rem; font-weight: 700; }
+.room-meta { color: var(--text-dim); font-size: 0.85rem; }
+
+.elapsed {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 0 0.4rem;
+  border-radius: 6px;
+}
+.elapsed-ok { color: var(--ok); }
+.elapsed-warn { color: #101010; background: var(--warn); }
+.elapsed-alert { color: #fff; background: var(--alert); }
+
+.room-flags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.15rem 0.3rem 0.15rem 0.55rem;
+  border-radius: 99px;
+}
+.flag-warn { background: #3d3418; color: var(--warn); }
+.flag-alert { background: #451f24; color: #ff9c9c; }
+.flag-info { background: #1b3049; color: var(--info); }
+.flag-ok { background: #1c3a28; color: var(--ok); }
+.flag-resolve {
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  border-radius: 99px;
+  width: 1.15rem;
+  height: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+.flag-resolve:hover { background: rgba(255, 255, 255, 0.28); }
+
+.room-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: auto; }
+
+/* ---------- buttons & inputs ---------- */
+.btn {
+  border: 1px solid var(--line);
+  background: var(--bg-hover);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 0.42rem 0.8rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--accent-dim); }
+.btn-small { padding: 0.28rem 0.6rem; font-size: 0.8rem; }
+.btn-primary { background: var(--accent-dim); border-color: var(--accent-dim); font-weight: 600; }
+.btn-primary:hover { background: var(--accent); color: #08211d; }
+.btn-ghost { background: transparent; }
+
+.flag-select, .room-select {
+  background: var(--bg-hover);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0.28rem 0.4rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.room-select:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- waiting room ---------- */
+.waiting-section { margin-top: 1.6rem; }
+.waiting-table { width: 100%; border-collapse: collapse; }
+.waiting-table th {
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.35rem 0.7rem;
+}
+.waiting-table td {
+  background: var(--bg-raised);
+  padding: 0.6rem 0.7rem;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+.waiting-table tbody tr { cursor: pointer; }
+.waiting-table tbody tr:hover td { background: var(--bg-hover); }
+.waiting-table td:first-child { border-left: 1px solid var(--line); border-radius: var(--radius) 0 0 var(--radius); }
+.waiting-table td:last-child { border-right: 1px solid var(--line); border-radius: 0 var(--radius) var(--radius) 0; }
+.patient-cell { font-weight: 700; font-size: 1.05rem; }
+.walkin-tag {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--info);
+  background: #1b3049;
+  border-radius: 99px;
+  padding: 0.1rem 0.45rem;
+  vertical-align: middle;
+}
+
+/* ---------- schedule side panel ---------- */
+.schedule-panel {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+.schedule-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.schedule-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.3rem;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.schedule-row:hover { background: var(--bg-hover); }
+.schedule-name { font-weight: 600; }
+.schedule-meta { color: var(--text-dim); font-size: 0.8rem; }
+.walkin-toggle { margin-top: 0.8rem; width: 100%; }
+.walkin-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.8rem; }
+.walkin-form input {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.9rem;
+}
+.walkin-actions { display: flex; gap: 0.5rem; }
+
+/* ---------- patient detail panel ---------- */
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 9, 16, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+.panel {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+  width: min(380px, 92vw);
+}
+.panel-head { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.8rem; }
+.panel-name { font-size: 1.4rem; font-weight: 700; }
+.panel-context { color: var(--accent); font-size: 0.85rem; }
+.panel-details { display: grid; grid-template-columns: auto 1fr; gap: 0.45rem 1rem; margin: 0; }
+.panel-details dt { color: var(--text-dim); font-size: 0.85rem; }
+.panel-details dd { margin: 0; font-size: 0.95rem; }
+.panel-note { margin-top: 1rem; color: var(--text-dim); font-size: 0.75rem; font-style: italic; }
+
+.footer {
+  padding: 0.6rem 1.4rem;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  border-top: 1px solid var(--line);
+}
