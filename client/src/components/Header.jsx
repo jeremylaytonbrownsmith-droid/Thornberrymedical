@@ -9,7 +9,7 @@ export default function Header({ state, nowMs, act, theme, onToggleTheme, soundO
       <div className="brand">
         <span className="brand-mark">◑</span>
         <span className="brand-name">Meridian</span>
-        <span className="brand-sub">Patient Flow Board · Thornberry Medical (Demo)</span>
+        <span className="brand-sub">Thornberry Medical · Beaufort, South Carolina (Demo)</span>
       </div>
       <div className="header-stats">
         <span><strong>{occupied}</strong>/{state.rooms.length} rooms</span>
