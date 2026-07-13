@@ -233,8 +233,8 @@
   .btn-ghost { background: transparent; }
   .btn-block { width: 100%; }
 
-  /* ---------- waiting room ---------- */
-  .waiting-section { margin-top: 1.4rem; }
+  /* ---------- checked-in queue ---------- */
+  .panel-hint { color: var(--text-dim); font-size: 0.78rem; margin: 0 0 0.7rem; line-height: 1.45; }
   .waiting-list { display: flex; flex-direction: column; gap: 0.5rem; }
   .waiting-row {
     display: flex; align-items: center; gap: 0.7rem;
@@ -258,13 +258,6 @@
     border-radius: var(--radius); padding: 0.9rem;
     box-shadow: var(--card-shadow);
   }
-  .schedule-row {
-    display: flex; justify-content: space-between; align-items: center; gap: 0.6rem;
-    padding: 0.5rem 0.15rem; border-bottom: 1px solid var(--line); cursor: pointer;
-  }
-  .schedule-row:last-of-type { border-bottom: none; }
-  .schedule-name { font-weight: 600; font-size: 0.95rem; }
-  .schedule-meta { color: var(--text-dim); font-size: 0.76rem; }
   .walkin-form { display: none; flex-direction: column; gap: 0.5rem; margin-top: 0.7rem; }
   .walkin-form.open { display: flex; }
   .walkin-form input {
@@ -338,24 +331,23 @@
   <section>
     <h2 class="section-title">Exam rooms</h2>
     <div class="room-grid" id="roomGrid"></div>
-
-    <div class="waiting-section">
-      <h2 class="section-title">Waiting room <span class="count-pill" id="waitCount">0</span></h2>
-      <div class="waiting-list" id="waitingList"></div>
-    </div>
   </section>
 
   <aside>
     <div class="schedule-panel">
-      <h2 class="section-title">Up next <span class="count-pill" id="schedCount">0</span></h2>
-      <div id="scheduleList"></div>
-      <button class="btn btn-ghost btn-block walkin-toggle" id="walkinToggle">+ Add walk-in</button>
+      <h2 class="section-title">Checked in <span class="count-pill" id="waitCount">0</span></h2>
+      <p class="panel-hint">
+        Patients appear here when they're checked in — fed from the EMR in a
+        real clinic, simulated in this demo. Pick a room to place them.
+      </p>
+      <div class="waiting-list" id="waitingList"></div>
+      <button class="btn btn-ghost btn-block walkin-toggle" id="walkinToggle">+ Add patient manually</button>
       <form class="walkin-form" id="walkinForm">
         <input required placeholder="First name" id="wiFirst" autocomplete="off" />
         <input required placeholder="Last initial" maxlength="1" id="wiLast" autocomplete="off" />
         <input placeholder="Reason for visit" id="wiReason" autocomplete="off" />
         <div class="walkin-actions">
-          <button type="submit" class="btn btn-small btn-primary">Check in walk-in</button>
+          <button type="submit" class="btn btn-small btn-primary">Add to queue</button>
           <button type="button" class="btn btn-small btn-ghost" id="walkinCancel">Cancel</button>
         </div>
       </form>
@@ -377,7 +369,7 @@
 /* ================= configuration ================= */
 const THRESHOLDS = { warnMinutes: 10, alertMinutes: 20 };
 const SIM_TICK_MS = 4000;
-const PACE = { minVisitSeconds: 35, minFlagClaimSeconds: 8, minFlagAgeSeconds: 20, targetScheduled: 5, maxWaiting: 5 };
+const PACE = { minVisitSeconds: 40, minFlagClaimSeconds: 8, minFlagAgeSeconds: 20, maxWaiting: 5 };
 
 const FLAG_META = {
   patient_waiting:    { label: 'Patient waiting',    tone: 'warn' },
@@ -477,12 +469,6 @@ function assignRoom(apptId, roomId) {
   r.status = 'occupied'; r.current_appointment_id = a.id;
 }
 
-function readyForCheckout(apptId) {
-  const a = apptById(apptId);
-  if (!a || a.status !== 'roomed') return;
-  a.status = 'ready_for_checkout'; a.ready_at = Date.now();
-}
-
 function checkout(apptId, needsCleaning) {
   const a = apptById(apptId);
   if (!a || (a.status !== 'roomed' && a.status !== 'ready_for_checkout')) return;
@@ -527,9 +513,7 @@ function seed() {
   S.rooms = ROOM_NAMES.map((name) => ({ id: nextId++, name: name, status: 'empty', current_appointment_id: null }));
   const now = Date.now(), MIN = 60000;
 
-  for (let i = 0; i < 7; i++) createPatientWithAppointment({ appt_time: now + randInt(5, 90) * MIN });
-
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const a = createPatientWithAppointment({ appt_time: now - randInt(0, 20) * MIN });
     a.status = 'waiting_room';
     a.checked_in_at = now - randInt(2, 15) * MIN;
@@ -555,25 +539,25 @@ const ageSec = (ts) => (Date.now() - ts) / 1000;
 
 function simTick() {
   if (!S.sim) return;
-  const scheduled = byStatus('scheduled').sort((a,b) => a.appt_time - b.appt_time);
   const waiting = byStatus('waiting_room').sort((a,b) => a.checked_in_at - b.checked_in_at);
   const roomed = byStatus('roomed');
-  const ready = byStatus('ready_for_checkout');
   const emptyRooms = S.rooms.filter((r) => r.status === 'empty');
   const dirtyRooms = S.rooms.filter((r) => r.status === 'needs_cleaning');
   const openFlags = S.flags.filter((f) => !f.resolved_at);
 
-  if (scheduled.length < PACE.targetScheduled && chance(0.7))
-    createPatientWithAppointment({ appt_time: Date.now() + randInt(2, 60) * 60000 });
-
-  if (scheduled.length > 0 && waiting.length < PACE.maxWaiting && chance(0.5))
-    checkIn(scheduled[0].id);
+  // The EMR feed: patients arrive on the board already checked in. The board
+  // never owns scheduling — in production this comes from the EMR's check-in
+  // event; here the sim plays the EMR.
+  if (waiting.length < PACE.maxWaiting && chance(0.45)) {
+    const a = createPatientWithAppointment({ appt_time: Date.now() + randInt(-10, 15) * 60000 });
+    checkIn(a.id);
+  }
 
   if (waiting.length > 0 && emptyRooms.length > 0 && chance(0.6))
     assignRoom(waiting[0].id, pick(emptyRooms).id);
 
   if (roomed.length > 0 && chance(0.2))
-    raiseFlag(pick(roomed).room_id, pick(['patient_waiting','needs_assistance','needs_supplies','ready_for_provider']));
+    raiseFlag(pick(roomed).room_id, pick(['patient_waiting','needs_assistance','needs_supplies','ready_for_provider','checkout_ready']));
 
   // staff acknowledge ("take") a request first, then resolve it
   openFlags.forEach((f) => {
@@ -581,11 +565,11 @@ function simTick() {
     else if (f.taken_by && ageSec(f.created_at) > PACE.minFlagAgeSeconds && chance(0.45)) resolveFlag(f.id);
   });
 
+  // Visits wrap up: checkout frees the room (sometimes flagged for cleaning).
   for (const a of roomed) {
-    if (ageSec(a.roomed_at) > PACE.minVisitSeconds && chance(0.35)) { readyForCheckout(a.id); break; }
+    if (ageSec(a.roomed_at) > PACE.minVisitSeconds && chance(0.3)) { checkout(a.id, chance(0.6) ? true : false); break; }
   }
 
-  if (ready.length > 0 && chance(0.5)) checkout(ready[0].id, chance(0.6) ? true : false);
   if (dirtyRooms.length > 0 && chance(0.5)) markClean(pick(dirtyRooms).id);
 }
 
@@ -618,7 +602,6 @@ function render() {
   renderStats();
   renderRooms();
   renderWaiting();
-  renderSchedule();
   renderSheet();
 }
 
@@ -656,9 +639,7 @@ function renderRooms() {
     const a = apptById(r.current_appointment_id), p = patientOf(a);
     const t = tone(a.roomed_at);
     const hasAlert = activeFlags(r.id).some((f) => FLAG_META[f.request_type].tone === 'alert');
-    const action = a.status === 'roomed'
-      ? '<button class="btn btn-small" data-act="ready" data-id="' + a.id + '">Ready for checkout</button>'
-      : '<button class="btn btn-small btn-primary" data-act="checkout" data-id="' + a.id + '">Complete checkout</button>';
+    const action = '<button class="btn btn-small btn-primary" data-act="checkout" data-id="' + a.id + '">Checkout</button>';
     return '<div class="room-card tappable tone-' + (hasAlert ? 'alert' : t) + '" data-act="open-room" data-id="' + r.id + '">' +
       '<div class="room-head"><span class="room-name">' + r.name + '</span>' +
       '<span class="elapsed elapsed-' + t + '" data-since="' + a.roomed_at + '" title="Time in room">' + fmtElapsed(a.roomed_at) + '</span></div>' +
@@ -678,24 +659,10 @@ function renderWaiting() {
         const p = patientOf(a), t = tone(a.checked_in_at);
         return '<div class="waiting-row" data-act="open-appt" data-id="' + a.id + '">' +
           '<div class="waiting-main"><div class="waiting-name">' + esc(displayName(p)) +
-          (a.is_walk_in ? '<span class="walkin-tag">walk-in</span>' : '') + '</div>' +
+          (a.is_walk_in ? '<span class="walkin-tag">manual</span>' : '') + '</div>' +
           '<div class="waiting-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</div></div>' +
           '<div class="waiting-right"><span class="elapsed elapsed-' + t + '" data-since="' + a.checked_in_at + '" data-kind="wait">' + fmtElapsed(a.checked_in_at) + '</span>' +
           '<button class="btn btn-small btn-primary" data-act="open-appt" data-id="' + a.id + '">Room…</button></div></div>';
-      }).join('');
-}
-
-function renderSchedule() {
-  const scheduled = byStatus('scheduled').sort((a,b) => a.appt_time - b.appt_time).slice(0, 10);
-  $('schedCount').textContent = scheduled.length;
-  $('scheduleList').innerHTML = scheduled.length === 0
-    ? '<div class="empty-note">Nothing on the schedule.</div>'
-    : scheduled.map((a) => {
-        const p = patientOf(a);
-        return '<div class="schedule-row" data-act="open-appt" data-id="' + a.id + '">' +
-          '<div><div class="schedule-name">' + esc(displayName(p)) + '</div>' +
-          '<div class="schedule-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</div></div>' +
-          '<button class="btn btn-small btn-primary" data-act="checkin" data-id="' + a.id + '">Check in</button></div>';
       }).join('');
 }
 
@@ -733,27 +700,19 @@ function renderSheet() {
         (activeFlags(r.id).length ? '<div class="sheet-section">Active flags</div><div class="room-flags">' + flagChips(r.id) + '</div>' : '') +
         '<div class="sheet-section">Raise a flag</div><div class="room-actions">' + flagBtns + '</div>' +
         '<div class="sheet-section">Visit</div><div class="sheet-actions">' +
-        (a.status === 'roomed'
-          ? '<button class="btn btn-primary" data-act="ready" data-id="' + a.id + '">Ready for checkout</button>'
-          : '<button class="btn btn-primary" data-act="checkout" data-id="' + a.id + '">Complete checkout</button>') +
+        '<button class="btn btn-primary" data-act="checkout" data-id="' + a.id + '">Checkout — free the room</button>' +
         '</div><div class="sheet-note">Synthetic demo record — not a real person.</div>';
     }
   } else if (sheetRef.kind === 'appt') {
     const a = apptById(sheetRef.id);
-    if (a && (a.status === 'scheduled' || a.status === 'waiting_room')) {
+    if (a && a.status === 'waiting_room') {
       const p = patientOf(a);
-      if (a.status === 'scheduled') {
-        html = sheetPatientBlock(p, a, 'Scheduled') +
-          '<div class="sheet-actions"><button class="btn btn-primary" data-act="checkin" data-id="' + a.id + '">Check in</button></div>' +
-          '<div class="sheet-note">Synthetic demo record — not a real person.</div>';
-      } else {
-        const open = S.rooms.filter((r) => r.status === 'empty');
-        html = sheetPatientBlock(p, a, 'Waiting · <span data-since="' + a.checked_in_at + '">' + fmtElapsed(a.checked_in_at) + '</span>') +
-          '<div class="sheet-section">Assign to room</div><div class="sheet-actions">' +
-          (open.length === 0 ? '<div class="empty-note">No open rooms right now.</div>'
-            : open.map((r) => '<button class="btn" data-act="assign" data-id="' + a.id + '" data-room="' + r.id + '">' + r.name + '</button>').join('')) +
-          '</div><div class="sheet-note">Synthetic demo record — not a real person.</div>';
-      }
+      const open = S.rooms.filter((r) => r.status === 'empty');
+      html = sheetPatientBlock(p, a, 'Checked in · waiting <span data-since="' + a.checked_in_at + '">' + fmtElapsed(a.checked_in_at) + '</span>') +
+        '<div class="sheet-section">Assign to room</div><div class="sheet-actions">' +
+        (open.length === 0 ? '<div class="empty-note">No open rooms right now.</div>'
+          : open.map((r) => '<button class="btn" data-act="assign" data-id="' + a.id + '" data-room="' + r.id + '">' + r.name + '</button>').join('')) +
+        '</div><div class="sheet-note">Synthetic demo record — not a real person.</div>';
     }
   }
 
@@ -784,9 +743,7 @@ document.addEventListener('click', (e) => {
   const id = Number(el.getAttribute('data-id'));
   e.stopPropagation();
 
-  if (act === 'checkin') { checkIn(id); closeSheet(); }
-  else if (act === 'assign') { assignRoom(id, Number(el.getAttribute('data-room'))); closeSheet(); }
-  else if (act === 'ready') readyForCheckout(id);
+  if (act === 'assign') { assignRoom(id, Number(el.getAttribute('data-room'))); closeSheet(); }
   else if (act === 'checkout') { checkout(id); closeSheet(); }
   else if (act === 'clean') markClean(id);
   else if (act === 'flag') raiseFlag(Number(el.getAttribute('data-room')), el.getAttribute('data-type'));

@@ -1,64 +1,103 @@
+import { useState } from 'react';
 import { api } from '../api.js';
 import { displayName, elapsedTone, formatClock, formatElapsed } from '../time.js';
 
-export default function WaitingList({ waiting, rooms, nowMs, act, onSelect }) {
+// The check-in queue. The board never owns scheduling or check-in — in
+// production this list arrives from the EMR the moment a patient is checked
+// in; in the demo the simulation plays the EMR's role. The staff action here
+// is a single decision: which room.
+export default function WaitingList({ waiting, rooms, act, nowMs, onSelect }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ first_name: '', last_initial: '', reason_for_visit: '' });
   const openRooms = rooms.filter((r) => r.status === 'empty');
 
+  const submit = (e) => {
+    e.preventDefault();
+    act(() => api.addWalkIn(form));
+    setForm({ first_name: '', last_initial: '', reason_for_visit: '' });
+    setShowAdd(false);
+  };
+
   return (
-    <div className="waiting-section">
+    <div className="queue-panel">
       <h2 className="section-title">
-        Waiting room <span className="count-pill">{waiting.length}</span>
+        Checked in <span className="count-pill">{waiting.length}</span>
       </h2>
+      <p className="panel-hint">
+        Patients appear here when they're checked in — fed from the EMR in a
+        real clinic, simulated in this demo. Pick a room to place them.
+      </p>
       {waiting.length === 0 ? (
-        <div className="empty-note">No one is waiting.</div>
+        <div className="empty-note">No one is waiting for a room.</div>
       ) : (
-        <div className="waiting-scroll">
-        <table className="waiting-table">
-          <thead>
-            <tr>
-              <th>Patient</th>
-              <th>Appt</th>
-              <th>Waiting</th>
-              <th>Provider</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {waiting.map((w) => {
-              const tone = elapsedTone(w.checked_in_at, nowMs);
-              return (
-                <tr key={w.appointment_id} onClick={() => onSelect({ ...w, context: 'Waiting room' })}>
-                  <td className="patient-cell">
+        <ul className="queue-list">
+          {waiting.map((w) => {
+            const tone = elapsedTone(w.checked_in_at, nowMs);
+            return (
+              <li key={w.appointment_id} className="queue-row" onClick={() => onSelect({ ...w, context: 'Checked in' })}>
+                <div className="queue-main">
+                  <div className="queue-name">
                     {displayName(w)}
-                    {w.is_walk_in ? <span className="walkin-tag">walk-in</span> : null}
-                  </td>
-                  <td>{formatClock(w.appt_time)}</td>
-                  <td><span className={`elapsed elapsed-${tone}`}>{formatElapsed(w.checked_in_at, nowMs)}</span></td>
-                  <td>{w.provider_name}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <select
-                      className="room-select"
-                      value=""
-                      disabled={openRooms.length === 0}
-                      onChange={(e) => {
-                        const roomId = Number(e.target.value);
-                        if (roomId) act(() => api.assignRoom(w.appointment_id, roomId));
-                      }}
-                    >
-                      <option value="" disabled>
-                        {openRooms.length === 0 ? 'No open rooms' : 'Assign room…'}
-                      </option>
-                      {openRooms.map((r) => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        </div>
+                    {w.is_walk_in ? <span className="walkin-tag">manual</span> : null}
+                  </div>
+                  <div className="queue-meta">{formatClock(w.appt_time)} · {w.provider_name}</div>
+                </div>
+                <span className={`elapsed elapsed-${tone}`} title="Waiting since check-in">
+                  {formatElapsed(w.checked_in_at, nowMs)}
+                </span>
+                <span onClick={(e) => e.stopPropagation()}>
+                  <select
+                    className="room-select"
+                    value=""
+                    disabled={openRooms.length === 0}
+                    onChange={(e) => {
+                      const roomId = Number(e.target.value);
+                      if (roomId) act(() => api.assignRoom(w.appointment_id, roomId));
+                    }}
+                  >
+                    <option value="" disabled>
+                      {openRooms.length === 0 ? 'No open rooms' : 'Room…'}
+                    </option>
+                    {openRooms.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {showAdd ? (
+        <form className="walkin-form" onSubmit={submit}>
+          <input
+            required
+            placeholder="First name"
+            value={form.first_name}
+            onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+          />
+          <input
+            required
+            placeholder="Last initial"
+            maxLength={1}
+            value={form.last_initial}
+            onChange={(e) => setForm({ ...form, last_initial: e.target.value })}
+          />
+          <input
+            placeholder="Reason for visit"
+            value={form.reason_for_visit}
+            onChange={(e) => setForm({ ...form, reason_for_visit: e.target.value })}
+          />
+          <div className="walkin-actions">
+            <button type="submit" className="btn btn-small btn-primary">Add to queue</button>
+            <button type="button" className="btn btn-small btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
+          </div>
+        </form>
+      ) : (
+        <button className="btn btn-ghost walkin-toggle" onClick={() => setShowAdd(true)}>
+          + Add patient manually
+        </button>
       )}
     </div>
   );

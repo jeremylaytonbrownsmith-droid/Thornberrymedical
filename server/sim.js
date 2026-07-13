@@ -9,12 +9,10 @@ const TICK_MS = 4000;
 
 // Time-compressed pacing (real clinics take minutes; the demo takes seconds).
 const PACE = {
-  minVisitSeconds: 35,        // minimum time roomed before eligible for checkout-ready
-  minReadySeconds: 12,        // minimum time in ready_for_checkout before checkout
+  minVisitSeconds: 40,        // minimum time roomed before the visit can wrap up
   minFlagClaimSeconds: 8,     // sim staff claim ("take") a flag after this
   minFlagAgeSeconds: 20,      // sim only auto-resolves flags older than this
-  targetScheduled: 5,         // keep this many upcoming appointments on the books
-  maxWaiting: 5,
+  maxWaiting: 5,              // EMR feed pauses when the queue is this deep
 };
 
 const chance = (p) => Math.random() < p;
@@ -33,24 +31,20 @@ export function setSimEnabled(on) {
 function tick() {
   if (!enabled) return;
   try {
-    const scheduled = db.prepare(`SELECT id, appt_time FROM appointments WHERE status = 'scheduled' ORDER BY appt_time`).all();
     const waiting = db.prepare(`SELECT id, checked_in_at FROM appointments WHERE status = 'waiting_room' ORDER BY checked_in_at`).all();
     const roomed = db.prepare(`SELECT id, room_id, roomed_at FROM appointments WHERE status = 'roomed'`).all();
-    const ready = db.prepare(`SELECT id FROM appointments WHERE status = 'ready_for_checkout'`).all();
     const emptyRooms = db.prepare(`SELECT id FROM rooms WHERE status = 'empty'`).all();
     const dirtyRooms = db.prepare(`SELECT id FROM rooms WHERE status = 'needs_cleaning'`).all();
     const activeFlags = db.prepare(`SELECT id, created_at, taken_by FROM staff_requests WHERE resolved_at IS NULL`).all();
 
-    // Keep the upcoming schedule stocked with fresh synthetic patients.
-    if (scheduled.length < PACE.targetScheduled && chance(0.7)) {
-      svc.createPatientWithAppointment({
-        appt_time: new Date(Date.now() + randInt(2, 60) * 60_000).toISOString(),
+    // The EMR feed: patients arrive on the board already checked in. The
+    // board never owns scheduling — in production this comes from the EMR's
+    // check-in event; here the sim plays the EMR.
+    if (waiting.length < PACE.maxWaiting && chance(0.45)) {
+      const { appointment_id } = svc.createPatientWithAppointment({
+        appt_time: new Date(Date.now() + randInt(-10, 15) * 60_000).toISOString(),
       });
-    }
-
-    // Front desk checks someone in (soonest appointment first).
-    if (scheduled.length > 0 && waiting.length < PACE.maxWaiting && chance(0.5)) {
-      svc.checkIn(scheduled[0].id);
+      svc.checkIn(appointment_id);
     }
 
     // Rooming: longest-waiting patient into a random open room.
@@ -61,7 +55,7 @@ function tick() {
     // Occasionally a room raises a request flag.
     if (roomed.length > 0 && chance(0.2)) {
       const target = pick(roomed);
-      svc.raiseFlag(target.room_id, pick(['patient_waiting', 'needs_assistance', 'needs_supplies', 'ready_for_provider']));
+      svc.raiseFlag(target.room_id, pick(['patient_waiting', 'needs_assistance', 'needs_supplies', 'ready_for_provider', 'checkout_ready']));
     }
 
     // Staff work the flags down: first someone takes the request, then it
@@ -74,17 +68,12 @@ function tick() {
       }
     }
 
-    // Visits wrap up: roomed -> ready_for_checkout.
+    // Visits wrap up: checkout frees the room (sometimes flagged for cleaning).
     for (const a of roomed) {
-      if (ageSeconds(a.roomed_at) > PACE.minVisitSeconds && chance(0.35)) {
-        svc.readyForCheckout(a.id);
+      if (ageSeconds(a.roomed_at) > PACE.minVisitSeconds && chance(0.3)) {
+        svc.checkout(a.id, { needsCleaning: chance(0.6) });
         break; // at most one per tick keeps the board readable
       }
-    }
-
-    // Checkout completes and frees the room (sometimes flagged for cleaning).
-    if (ready.length > 0 && chance(0.5)) {
-      svc.checkout(ready[0].id, { needsCleaning: chance(0.6) });
     }
 
     // Housekeeping turns dirty rooms around.

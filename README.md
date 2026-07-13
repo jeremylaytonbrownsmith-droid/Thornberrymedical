@@ -1,9 +1,15 @@
 # Meridian — Patient Flow Board (Demo)
 
-A live "big board" for a small medical practice front desk: which exam rooms are
-occupied and for how long, who is in the waiting room, and which rooms need
-attention — plus the staff workflow to check patients in, room them, flag
-requests, and check them out.
+A live "big board" for a small medical practice front desk. The model matches
+how these boards are used in real clinics: **the EMR owns scheduling and
+check-in; the board's job starts when a patient is checked in.** Checked-in
+patients appear in a queue, staff place them in a room, rooms show who's in
+them and for how long, and request flags surface what needs attention.
+
+In production the checked-in queue would be fed by the practice's EMR
+(check-in event via its API or an HL7 ADT/FHIR feed). This demo has no EMR to
+talk to, so the simulation plays the EMR's role — it's labeled that way on
+screen — and a manual "add patient" fallback covers walk-ins or an EMR outage.
 
 > **Demo only. All patient data is synthetic.** Names, DOBs, and phone numbers
 > are generated from fake pools (phones use the reserved 555-01xx range). There
@@ -63,12 +69,12 @@ desk). The standalone file is the "text someone a link" version.
 - **Chime** — the header bell toggles a soft two-note chime whenever a new
   request flag is raised, so front desk staff hear the board without watching
   it (off by default).
-- **Waiting room** — everyone checked in but not yet roomed, with live wait
-  times. Use **Assign room…** to move them into any open room.
-- **Up next** — the schedule. **Check in** moves a patient to the waiting
-  room; **+ Add walk-in** creates and checks in an unscheduled patient.
-- **Checkout** — *Ready for checkout* → *Complete checkout* frees the room
-  (usually to *needs cleaning*, then **Mark clean** reopens it).
+- **Checked in** — the queue of patients who have been checked in (fed from
+  the EMR in a real clinic; the simulation plays that role here), with live
+  wait times. Pick a room from the dropdown to place them — that's the core
+  staff action. **+ Add patient manually** covers walk-ins or an EMR outage.
+- **Checkout** — one button frees the room (usually to *needs cleaning*,
+  then **Mark clean** reopens it).
 - **Patient panel** — click any room card, waiting-room row, or schedule entry
   to see the patient's (fake) details: reason for visit, provider, DOB, phone.
 
@@ -115,7 +121,7 @@ getting stuck.
 | Table | Purpose | Key columns |
 |---|---|---|
 | `patients` | Synthetic people | `first_name`, `last_initial`, `date_of_birth`, `reason_for_visit`, `phone` |
-| `appointments` | One visit; carries the workflow state | `status` (`scheduled → waiting_room → roomed → ready_for_checkout → checked_out`), `room_id`, `checked_in_at`, `roomed_at`, `checked_out_at`, `is_walk_in` |
+| `appointments` | One visit; carries the workflow state | `status` (`scheduled → waiting_room → roomed → checked_out`; the board displays from `waiting_room` on — `scheduled` belongs to the EMR, and `ready_for_checkout` remains supported in the API), `room_id`, `checked_in_at`, `roomed_at`, `checked_out_at`, `is_walk_in` |
 | `rooms` | Exam rooms | `name`, `status` (`empty` / `occupied` / `needs_cleaning`), `current_appointment_id` |
 | `staff_requests` | Request/status flags on a room | `request_type`, `created_at`, `taken_by` (who claimed it), `resolved_at` (open = `resolved_at IS NULL`) |
 
@@ -152,7 +158,10 @@ scripts/  verify-lifecycle.mjs end-to-end check
 ## Before anything like this touches real patients
 
 This prototype deliberately stops at the demo line: no real scheduling/EHR
-integration, no SMS, no authentication, no hosting story. Moving past a demo
-would mean revisiting HIPAA obligations (BAAs, access control, audit logging,
-encryption at rest/in transit) and deciding local-network vs. cloud hosting —
-none of which is set up here, on purpose.
+integration, no SMS, no authentication, no hosting story. The single most
+important real-world step is replacing the simulated feed with the practice's
+EMR check-in event (which EMR, and whether it exposes an API, FHIR, or HL7 ADT
+feed, decides most of the architecture). Moving past a demo also means
+revisiting HIPAA obligations (BAAs, access control, audit logging, encryption
+at rest/in transit) and deciding local-network vs. cloud hosting — none of
+which is set up here, on purpose.

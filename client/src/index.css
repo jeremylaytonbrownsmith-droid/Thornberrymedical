@@ -261,30 +261,29 @@ body {
 }
 .room-select:disabled { opacity: 0.5; cursor: default; }
 
-/* ---------- waiting room ---------- */
-.waiting-section { margin-top: 1.6rem; }
-.waiting-scroll { overflow-x: auto; }
-.waiting-table { width: 100%; border-collapse: collapse; }
-.waiting-table th {
-  text-align: left;
-  color: var(--text-dim);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 0.35rem 0.7rem;
-}
-.waiting-table td {
+/* ---------- checked-in queue ---------- */
+.queue-panel {
   background: var(--bg-raised);
-  padding: 0.6rem 0.7rem;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  font-size: 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--card-shadow);
 }
-.waiting-table tbody tr { cursor: pointer; }
-.waiting-table tbody tr:hover td { background: var(--bg-hover); }
-.waiting-table td:first-child { border-left: 1px solid var(--line); border-radius: var(--radius) 0 0 var(--radius); }
-.waiting-table td:last-child { border-right: 1px solid var(--line); border-radius: 0 var(--radius) var(--radius) 0; }
-.patient-cell { font-weight: 700; font-size: 1.05rem; }
+.panel-hint { color: var(--text-dim); font-size: 0.8rem; margin: 0 0 0.8rem; line-height: 1.45; }
+.queue-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.queue-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.15rem;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.queue-row:last-of-type { border-bottom: none; }
+.queue-row:hover { background: var(--bg-hover); }
+.queue-main { min-width: 0; margin-right: auto; }
+.queue-name { font-weight: 700; font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.queue-meta { color: var(--text-dim); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .walkin-tag {
   margin-left: 0.5rem;
   font-size: 0.7rem;
@@ -296,27 +295,7 @@ body {
   vertical-align: middle;
 }
 
-/* ---------- schedule side panel ---------- */
-.schedule-panel {
-  background: var(--bg-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 1rem;
-  box-shadow: var(--card-shadow);
-}
-.schedule-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.schedule-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0.3rem;
-  border-bottom: 1px solid var(--line);
-  cursor: pointer;
-}
-.schedule-row:hover { background: var(--bg-hover); }
-.schedule-name { font-weight: 600; }
-.schedule-meta { color: var(--text-dim); font-size: 0.8rem; }
+/* ---------- manual add ---------- */
 .walkin-toggle { margin-top: 0.8rem; width: 100%; }
 .walkin-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.8rem; }
 .walkin-form input {
@@ -372,9 +351,5 @@ body {
   .room-grid { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 0.6rem; }
   .room-card { min-height: 112px; padding: 0.65rem 0.7rem; }
   .room-patient { font-size: 1.25rem; }
-  /* provider column is the least useful at a glance — it stays available in
-     the patient panel; hiding it keeps the waiting table on one screen */
-  .waiting-table th:nth-child(4), .waiting-table td:nth-child(4) { display: none; }
-  .waiting-table td { padding: 0.55rem 0.5rem; }
   .btn { padding: 0.5rem 0.8rem; } /* comfortable touch targets */
 }

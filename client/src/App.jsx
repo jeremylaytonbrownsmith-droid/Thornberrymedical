@@ -5,7 +5,6 @@ import { chime } from './chime.js';
 import Header from './components/Header.jsx';
 import RoomGrid from './components/RoomGrid.jsx';
 import WaitingList from './components/WaitingList.jsx';
-import SchedulePanel from './components/SchedulePanel.jsx';
 import PatientPanel from './components/PatientPanel.jsx';
 
 export default function App() {
@@ -89,10 +88,9 @@ export default function App() {
       <main className="layout">
         <section className="board-col">
           <RoomGrid rooms={state.rooms} nowMs={nowMs} act={act} onSelect={setSelected} />
-          <WaitingList waiting={state.waiting} rooms={state.rooms} nowMs={nowMs} act={act} onSelect={setSelected} />
         </section>
         <aside className="side-col">
-          <SchedulePanel scheduled={state.scheduled} act={act} onSelect={setSelected} />
+          <WaitingList waiting={state.waiting} rooms={state.rooms} nowMs={nowMs} act={act} onSelect={setSelected} />
         </aside>
       </main>
       {selected && <PatientPanel entry={selected} onClose={() => setSelected(null)} />}

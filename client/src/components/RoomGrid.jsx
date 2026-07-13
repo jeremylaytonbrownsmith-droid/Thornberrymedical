@@ -91,16 +91,9 @@ function RoomCard({ room, nowMs, act, onSelect }) {
         </div>
       )}
       <div className="room-actions" onClick={(e) => e.stopPropagation()}>
-        {room.appt_status === 'roomed' && (
-          <button className="btn btn-small" onClick={() => act(() => api.readyForCheckout(room.appointment_id))}>
-            Ready for checkout
-          </button>
-        )}
-        {room.appt_status === 'ready_for_checkout' && (
-          <button className="btn btn-small btn-primary" onClick={() => act(() => api.checkout(room.appointment_id))}>
-            Complete checkout
-          </button>
-        )}
+        <button className="btn btn-small btn-primary" onClick={() => act(() => api.checkout(room.appointment_id))}>
+          Checkout
+        </button>
         {flagPicker ? (
           <select
             autoFocus
