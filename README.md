@@ -170,8 +170,27 @@ scripts/  verify-lifecycle.mjs end-to-end check
 This prototype deliberately stops at the demo line: no real scheduling/EHR
 integration, no SMS, no authentication, no hosting story. The single most
 important real-world step is replacing the simulated feed with the practice's
-EMR check-in event (which EMR, and whether it exposes an API, FHIR, or HL7 ADT
-feed, decides most of the architecture). Moving past a demo also means
+EMR check-in event.
+
+**Target EMR: eClinicalWorks (eCW).** The practice plans to use eCW, which
+offers several viable paths for the check-in feed, roughly in order of
+preference:
+
+1. **FHIR R4 API** via the eCW developer program (app registration required).
+   A small connector polls today's appointments every 30–60 s and fires the
+   board's check-in call when a patient's status changes to "Arrived" (the
+   front desk's normal eCW workflow is the trigger — no new steps for staff).
+2. **Event/webhook subscriptions** where available in eCW's platform —
+   push instead of poll; confirm availability and scope with eCW.
+3. **HL7 v2 interface (SIU/ADT)** through eCW's interface team — the
+   old-school reliable option; eCW typically charges interface setup and
+   maintenance fees.
+
+Questions to settle with the eCW rep (ideally in writing, during contract
+negotiation when leverage is highest): does the plan include third-party
+API access; can an app read today's appointment statuses; what does an HL7
+SIU/ADT interface cost. Note eCW is cloud-hosted, so the connector talks to
+eCW over the internet regardless of where the board itself is hosted. Moving past a demo also means
 revisiting HIPAA obligations (BAAs, access control, audit logging, encryption
 at rest/in transit) and deciding local-network vs. cloud hosting — none of
 which is set up here, on purpose.
