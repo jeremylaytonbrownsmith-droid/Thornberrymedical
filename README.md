@@ -87,6 +87,11 @@ desk). The standalone file is the "text someone a link" version.
   the EMR in a real clinic; the simulation plays that role here), with live
   wait times. Pick a room from the dropdown to place them — that's the core
   staff action. **+ Add patient manually** covers walk-ins or an EMR outage.
+- **Couples / shared rooms** — rooms hold up to two patients. The room
+  dropdown offers open rooms plus rooms with one occupant ("join …"); each
+  occupant has their own time-in-room timer and checkout, and the room only
+  frees up when the last one leaves. The simulation occasionally checks in a
+  couple (shared `party_id`) and seats them together.
 - **Checkout** — one button frees the room (usually to *needs cleaning*,
   then **Mark clean** reopens it).
 - **Patient panel** — click any room card, waiting-room row, or schedule entry

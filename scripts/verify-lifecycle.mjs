@@ -53,15 +53,27 @@ ok(roomed.status === 'roomed' && roomed.room_id === openRoom.id, 'assign to room
 ok(!!roomed.roomed_at, `roomed_at stamped (${roomed.roomed_at})`);
 state = await get('/api/state');
 const roomNow = state.rooms.find((r) => r.id === openRoom.id);
-ok(roomNow.status === 'occupied' && roomNow.appointment_id === apptId, 'room shows occupied + linked appointment');
+ok(roomNow.status === 'occupied' && roomNow.occupants.some((o) => o.appointment_id === apptId),
+  'room shows occupied + occupant listed');
 ok(state.waiting.every((w) => w.appointment_id !== apptId), 'walk-in left the waiting list');
 
-// 4. Double-booking the same room must fail.
-let doubleBookRejected = false;
+// 4. Couples: a second patient can join the room, a third cannot.
+const partner = await post('/api/patients', { first_name: 'Verne', last_initial: 'Q', reason_for_visit: 'E2E couple visit' });
+const joined = await post(`/api/appointments/${partner.id}/room`, { room_id: openRoom.id });
+ok(joined.status === 'roomed' && joined.room_id === openRoom.id, 'second patient joins the same room (couple)');
+state = await get('/api/state');
+ok(state.rooms.find((r) => r.id === openRoom.id).occupants.length === 2, 'room shows both occupants');
+let thirdRejected = false;
 try {
   await post(`/api/appointments/${sched.appointment_id}/room`, { room_id: openRoom.id });
-} catch { doubleBookRejected = true; }
-ok(doubleBookRejected, 'assigning a second patient to an occupied room is rejected');
+} catch { thirdRejected = true; }
+ok(thirdRejected, 'a third patient in the same room is rejected (capacity 2)');
+const partnerOut = await post(`/api/appointments/${partner.id}/checkout`);
+ok(partnerOut.status === 'checked_out', 'one half of the couple checks out');
+state = await get('/api/state');
+const stillOccupied = state.rooms.find((r) => r.id === openRoom.id);
+ok(stillOccupied.status === 'occupied' && stillOccupied.occupants.length === 1,
+  'room stays occupied while the companion remains');
 
 // 5. Raise and resolve a flag.
 const flag = await post(`/api/rooms/${openRoom.id}/flags`, { request_type: 'needs_assistance' });
@@ -79,7 +91,7 @@ const out = await post(`/api/appointments/${apptId}/checkout`);
 ok(out.status === 'checked_out' && !!out.checked_out_at, `checkout stamped (${out.checked_out_at})`);
 state = await get('/api/state');
 const freed = state.rooms.find((r) => r.id === openRoom.id);
-ok(freed.status === 'needs_cleaning' && freed.current_appointment_id == null, 'room freed (needs_cleaning), no lingering occupant');
+ok(freed.status === 'needs_cleaning' && freed.occupants.length === 0, 'room freed (needs_cleaning), no lingering occupant');
 ok(freed.flags.length === 0, 'no stale flags on the freed room');
 const cleaned = await post(`/api/rooms/${openRoom.id}/clean`);
 ok(cleaned.status === 'empty', 'mark-clean returns room to empty');
@@ -89,7 +101,7 @@ state = await get('/api/state');
 const now = Date.now();
 const badTs = [
   ...state.waiting.map((w) => w.checked_in_at),
-  ...state.rooms.filter((r) => r.roomed_at).map((r) => r.roomed_at),
+  ...state.rooms.flatMap((r) => r.occupants.map((o) => o.roomed_at)),
 ].filter((ts) => !(new Date(ts).getTime() <= now + 1000));
 ok(badTs.length === 0, 'all check-in/roomed timestamps are valid and non-future');
 

@@ -39,17 +39,39 @@ function tick() {
 
     // The EMR feed: patients arrive on the board already checked in. The
     // board never owns scheduling — in production this comes from the EMR's
-    // check-in event; here the sim plays the EMR.
+    // check-in event; here the sim plays the EMR. Occasionally a couple
+    // checks in together (same last initial, shared party_id).
     if (waiting.length < PACE.maxWaiting && chance(0.45)) {
-      const { appointment_id } = svc.createPatientWithAppointment({
-        appt_time: new Date(Date.now() + randInt(-10, 15) * 60_000).toISOString(),
-      });
-      svc.checkIn(appointment_id);
+      const apptTime = new Date(Date.now() + randInt(-10, 15) * 60_000).toISOString();
+      const first = svc.createPatientWithAppointment({ appt_time: apptTime });
+      svc.checkIn(first.appointment_id);
+      if (chance(0.2) && waiting.length + 1 < PACE.maxWaiting) {
+        const partner = svc.createPatientWithAppointment({
+          appt_time: apptTime,
+          last_initial: first.last_initial,
+          party_id: first.appointment_id,
+        });
+        db.prepare(`UPDATE appointments SET party_id = ? WHERE id = ?`)
+          .run(first.appointment_id, first.appointment_id);
+        svc.checkIn(partner.appointment_id);
+      }
     }
 
-    // Rooming: longest-waiting patient into a random open room.
-    if (waiting.length > 0 && emptyRooms.length > 0 && chance(0.6)) {
-      svc.assignRoom(waiting[0].id, pick(emptyRooms).id);
+    // Rooming: longest-waiting patient. If their partner is already in a
+    // room with space, seat them together; otherwise take an open room.
+    if (waiting.length > 0 && chance(0.6)) {
+      const next = db.prepare(`SELECT id, party_id FROM appointments WHERE id = ?`).get(waiting[0].id);
+      const partnerRoom = next.party_id == null ? null : db.prepare(`
+        SELECT room_id FROM appointments
+        WHERE party_id = ? AND id != ? AND status = 'roomed'
+          AND (SELECT COUNT(*) FROM appointments o
+               WHERE o.room_id = appointments.room_id AND o.status IN ('roomed','ready_for_checkout')) < 2
+      `).get(next.party_id, next.id);
+      if (partnerRoom?.room_id != null) {
+        svc.assignRoom(next.id, partnerRoom.room_id);
+      } else if (emptyRooms.length > 0) {
+        svc.assignRoom(next.id, pick(emptyRooms).id);
+      }
     }
 
     // Occasionally a room raises a request flag.

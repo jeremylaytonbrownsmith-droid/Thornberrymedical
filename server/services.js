@@ -10,20 +10,26 @@ export class ApiError extends Error {
   }
 }
 
+// Rooms can hold two patients (e.g. a couple seen together).
+export const ROOM_CAPACITY = 2;
+
+function occupantsOf(roomId) {
+  return db.prepare(`
+    SELECT a.id AS appointment_id, a.appt_time, a.provider_name, a.status AS appt_status,
+           a.roomed_at, a.checked_in_at, a.party_id,
+           p.id AS patient_id, p.first_name, p.last_initial, p.reason_for_visit,
+           p.phone, p.date_of_birth
+    FROM appointments a JOIN patients p ON p.id = a.patient_id
+    WHERE a.room_id = ? AND a.status IN ('roomed', 'ready_for_checkout')
+    ORDER BY a.roomed_at
+  `).all(roomId);
+}
+
 // ---------- reads ----------
 
 export function getState() {
-  const rooms = db.prepare(`
-    SELECT r.id, r.name, r.status, r.current_appointment_id,
-           a.id AS appointment_id, a.appt_time, a.provider_name, a.status AS appt_status,
-           a.roomed_at, a.checked_in_at,
-           p.id AS patient_id, p.first_name, p.last_initial, p.reason_for_visit,
-           p.phone, p.date_of_birth
-    FROM rooms r
-    LEFT JOIN appointments a ON a.id = r.current_appointment_id
-    LEFT JOIN patients p ON p.id = a.patient_id
-    ORDER BY r.id
-  `).all();
+  const rooms = db.prepare(`SELECT id, name, status FROM rooms ORDER BY id`).all()
+    .map((r) => ({ ...r, occupants: occupantsOf(r.id) }));
 
   const flags = db.prepare(`
     SELECT id, room_id, request_type, created_at, taken_by
@@ -34,6 +40,7 @@ export function getState() {
 
   const waiting = db.prepare(`
     SELECT a.id AS appointment_id, a.appt_time, a.provider_name, a.checked_in_at, a.is_walk_in,
+           a.party_id,
            p.id AS patient_id, p.first_name, p.last_initial, p.reason_for_visit,
            p.phone, p.date_of_birth
     FROM appointments a JOIN patients p ON p.id = a.patient_id
@@ -79,7 +86,7 @@ function getRoom(id) {
 
 // ---------- transitions ----------
 
-export function createPatientWithAppointment({ first_name, last_initial, reason_for_visit, provider_name, appt_time, is_walk_in = 0 }) {
+export function createPatientWithAppointment({ first_name, last_initial, reason_for_visit, provider_name, appt_time, is_walk_in = 0, party_id = null }) {
   const base = fakePatient();
   const patient = {
     ...base,
@@ -92,10 +99,10 @@ export function createPatientWithAppointment({ first_name, last_initial, reason_
     VALUES (@first_name, @last_initial, @date_of_birth, @reason_for_visit, @phone)
   `).run(patient);
   const aInfo = db.prepare(`
-    INSERT INTO appointments (patient_id, appt_time, provider_name, status, is_walk_in)
-    VALUES (?, ?, ?, 'scheduled', ?)
-  `).run(pInfo.lastInsertRowid, appt_time ?? nowIso(), provider_name || fakeProvider(), is_walk_in ? 1 : 0);
-  return { patient_id: pInfo.lastInsertRowid, appointment_id: aInfo.lastInsertRowid };
+    INSERT INTO appointments (patient_id, appt_time, provider_name, status, is_walk_in, party_id)
+    VALUES (?, ?, ?, 'scheduled', ?, ?)
+  `).run(pInfo.lastInsertRowid, appt_time ?? nowIso(), provider_name || fakeProvider(), is_walk_in ? 1 : 0, party_id);
+  return { patient_id: pInfo.lastInsertRowid, appointment_id: aInfo.lastInsertRowid, last_initial: patient.last_initial };
 }
 
 export function checkIn(apptId) {
@@ -115,13 +122,17 @@ export const assignRoom = db.transaction((apptId, roomId) => {
     throw new ApiError(400, `Cannot room: appointment is '${appt.status}', expected 'waiting_room'`);
   }
   const room = getRoom(roomId);
-  if (room.status !== 'empty') {
-    throw new ApiError(400, `Room ${room.name} is not available (${room.status})`);
+  if (room.status === 'needs_cleaning') {
+    throw new ApiError(400, `Room ${room.name} needs cleaning first`);
+  }
+  const occupants = occupantsOf(roomId);
+  if (occupants.length >= ROOM_CAPACITY) {
+    throw new ApiError(400, `Room ${room.name} is full (${occupants.length}/${ROOM_CAPACITY})`);
   }
   const ts = nowIso();
   db.prepare(`UPDATE appointments SET status = 'roomed', room_id = ?, roomed_at = ? WHERE id = ?`)
     .run(roomId, ts, apptId);
-  db.prepare(`UPDATE rooms SET status = 'occupied', current_appointment_id = ? WHERE id = ?`)
+  db.prepare(`UPDATE rooms SET status = 'occupied', current_appointment_id = COALESCE(current_appointment_id, ?) WHERE id = ?`)
     .run(apptId, roomId);
   return getAppt(apptId);
 });
@@ -144,11 +155,18 @@ export const checkout = db.transaction((apptId, { needsCleaning = true } = {}) =
   db.prepare(`UPDATE appointments SET status = 'checked_out', checked_out_at = ? WHERE id = ?`)
     .run(ts, apptId);
   if (appt.room_id != null) {
-    db.prepare(`UPDATE rooms SET status = ?, current_appointment_id = NULL WHERE id = ?`)
-      .run(needsCleaning ? 'needs_cleaning' : 'empty', appt.room_id);
-    // A freed room must never carry stale flags from its previous occupant.
-    db.prepare(`UPDATE staff_requests SET resolved_at = ? WHERE room_id = ? AND resolved_at IS NULL`)
-      .run(ts, appt.room_id);
+    const remaining = occupantsOf(appt.room_id);
+    if (remaining.length === 0) {
+      // Last one out: free the room and clear its flags.
+      db.prepare(`UPDATE rooms SET status = ?, current_appointment_id = NULL WHERE id = ?`)
+        .run(needsCleaning ? 'needs_cleaning' : 'empty', appt.room_id);
+      db.prepare(`UPDATE staff_requests SET resolved_at = ? WHERE room_id = ? AND resolved_at IS NULL`)
+        .run(ts, appt.room_id);
+    } else {
+      // A companion is still in the room — it stays occupied.
+      db.prepare(`UPDATE rooms SET current_appointment_id = ? WHERE id = ?`)
+        .run(remaining[0].appointment_id, appt.room_id);
+    }
   }
   return getAppt(apptId);
 });
@@ -232,18 +250,31 @@ export const reseed = db.transaction(() => {
   // green/amber/red thresholds are all visible immediately after a reset.
   const roomIds = db.prepare(`SELECT id FROM rooms ORDER BY id`).all().map((r) => r.id);
   const elapsed = [3, 12, 24]; // minutes in room
-  for (let i = 0; i < elapsed.length; i++) {
+  const seedRoomed = (roomId, mins, opts = {}) => {
     const { appointment_id } = createPatientWithAppointment({
       appt_time: new Date(now - randInt(20, 40) * MIN).toISOString(),
+      ...opts,
     });
-    const roomedAt = new Date(now - elapsed[i] * MIN).toISOString();
-    const checkedInAt = new Date(now - (elapsed[i] + randInt(3, 10)) * MIN).toISOString();
+    const roomedAt = new Date(now - mins * MIN).toISOString();
+    const checkedInAt = new Date(now - (mins + randInt(3, 10)) * MIN).toISOString();
     db.prepare(`
       UPDATE appointments SET status = 'roomed', room_id = ?, checked_in_at = ?, roomed_at = ? WHERE id = ?
-    `).run(roomIds[i], checkedInAt, roomedAt, appointment_id);
-    db.prepare(`UPDATE rooms SET status = 'occupied', current_appointment_id = ? WHERE id = ?`)
-      .run(appointment_id, roomIds[i]);
-  }
+    `).run(roomId, checkedInAt, roomedAt, appointment_id);
+    db.prepare(`UPDATE rooms SET status = 'occupied', current_appointment_id = COALESCE(current_appointment_id, ?) WHERE id = ?`)
+      .run(appointment_id, roomId);
+    return appointment_id;
+  };
+  for (let i = 0; i < elapsed.length; i++) seedRoomed(roomIds[i], elapsed[i]);
+
+  // A couple sharing the first room, so the two-to-a-room feature is
+  // visible immediately after a reset.
+  const partnerOf = db.prepare(`
+    SELECT a.id, p.last_initial FROM appointments a JOIN patients p ON p.id = a.patient_id
+    WHERE a.room_id = ? AND a.status = 'roomed'
+  `).get(roomIds[0]);
+  const partnerId = seedRoomed(roomIds[0], elapsed[0], { last_initial: partnerOf.last_initial });
+  db.prepare(`UPDATE appointments SET party_id = ? WHERE id IN (?, ?)`)
+    .run(partnerOf.id, partnerOf.id, partnerId);
 
   // One active flag so the board shows the attention state right away,
   // backdated a couple of minutes so its elapsed timer reads meaningfully.

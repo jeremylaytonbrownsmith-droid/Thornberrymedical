@@ -171,8 +171,14 @@
   .room-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.4rem; }
   .room-name { font-weight: 700; letter-spacing: 0.03em; font-size: 0.92rem; }
   .room-empty-label { color: var(--text-dim); font-size: 0.8rem; }
-  .room-patient { font-size: 1.3rem; font-weight: 700; line-height: 1.15; }
   .room-meta { color: var(--text-dim); font-size: 0.78rem; }
+
+  /* occupants — a room can hold one patient or a pair (e.g. a couple) */
+  .occupant { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.45rem; }
+  .occupant + .occupant { border-top: 1px dashed var(--line); padding-top: 0.35rem; }
+  .occupant-main { min-width: 0; margin-right: auto; display: flex; flex-direction: column; }
+  .occupant-name { font-weight: 700; font-size: 1.05rem; line-height: 1.2; white-space: nowrap; }
+  .occupant-solo .occupant-name { font-size: 1.3rem; }
 
   .elapsed {
     font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.98rem;
@@ -402,6 +408,11 @@ const roomById = (id) => S.rooms.find((r) => r.id === id);
 const patientOf = (appt) => S.patients.find((p) => p.id === appt.patient_id);
 const activeFlags = (roomId) => S.flags.filter((f) => f.room_id === roomId && !f.resolved_at);
 const byStatus = (st) => S.appts.filter((a) => a.status === st);
+// Rooms hold up to two patients (e.g. a couple seen together).
+const ROOM_CAPACITY = 2;
+const occupantsOf = (roomId) => S.appts
+  .filter((a) => a.room_id === roomId && (a.status === 'roomed' || a.status === 'ready_for_checkout'))
+  .sort((a, b) => a.roomed_at - b.roomed_at);
 
 /* -------- chime (WebAudio, no assets) -------- */
 let audioCtx;
@@ -439,6 +450,7 @@ function createPatientWithAppointment(opts) {
     appt_time: opts.appt_time || Date.now(),
     provider_name: pick(PROVIDERS),
     status: 'scheduled', room_id: null, is_walk_in: !!opts.is_walk_in,
+    party_id: null,
     checked_in_at: null, roomed_at: null, checked_out_at: null,
   };
   S.appts.push(appt);
@@ -454,9 +466,10 @@ function checkIn(apptId) {
 
 function assignRoom(apptId, roomId) {
   const a = apptById(apptId), r = roomById(roomId);
-  if (!a || a.status !== 'waiting_room' || !r || r.status !== 'empty') return;
+  if (!a || a.status !== 'waiting_room' || !r || r.status === 'needs_cleaning') return;
+  if (occupantsOf(roomId).length >= ROOM_CAPACITY) return;
   a.status = 'roomed'; a.room_id = r.id; a.roomed_at = Date.now();
-  r.status = 'occupied'; r.current_appointment_id = a.id;
+  r.status = 'occupied';
 }
 
 function checkout(apptId, needsCleaning) {
@@ -466,10 +479,11 @@ function checkout(apptId, needsCleaning) {
   S.checkedOut++;
   if (a.room_id != null) {
     const r = roomById(a.room_id);
-    r.status = needsCleaning === false ? 'empty' : 'needs_cleaning';
-    r.current_appointment_id = null;
-    // a freed room never keeps its previous occupant's flags
-    activeFlags(r.id).forEach((f) => { f.resolved_at = Date.now(); });
+    if (occupantsOf(r.id).length === 0) {
+      // last one out frees the room, and it never keeps stale flags
+      r.status = needsCleaning === false ? 'empty' : 'needs_cleaning';
+      activeFlags(r.id).forEach((f) => { f.resolved_at = Date.now(); });
+    }
   }
 }
 
@@ -511,14 +525,19 @@ function seed() {
 
   // staggered so green / amber / red are all visible immediately
   const elapsed = [3, 12, 24];
-  for (let i = 0; i < elapsed.length; i++) {
-    const a = createPatientWithAppointment({ appt_time: now - randInt(20, 40) * MIN });
-    const r = S.rooms[i];
-    a.status = 'roomed'; a.room_id = r.id;
-    a.roomed_at = now - elapsed[i] * MIN;
+  const seedRoomed = (room, mins, opts) => {
+    const a = createPatientWithAppointment(Object.assign({ appt_time: now - randInt(20, 40) * MIN }, opts || {}));
+    a.status = 'roomed'; a.room_id = room.id;
+    a.roomed_at = now - mins * MIN;
     a.checked_in_at = a.roomed_at - randInt(3, 10) * MIN;
-    r.status = 'occupied'; r.current_appointment_id = a.id;
-  }
+    room.status = 'occupied';
+    return a;
+  };
+  for (let i = 0; i < elapsed.length; i++) seedRoomed(S.rooms[i], elapsed[i]);
+  // a couple sharing the first room, so the feature is visible right away
+  const half = occupantsOf(S.rooms[0].id)[0];
+  const partner = seedRoomed(S.rooms[0], elapsed[0], { last_initial: patientOf(half).last_initial });
+  half.party_id = half.id; partner.party_id = half.id;
   raiseFlag(S.rooms[1].id, pick(['ready_for_provider','needs_assistance','patient_waiting']));
   // backdate the seeded flag so its elapsed timer reads meaningfully
   S.flags.forEach((f) => { f.created_at = now - 2 * MIN; });
@@ -537,14 +556,32 @@ function simTick() {
 
   // The EMR feed: patients arrive on the board already checked in. The board
   // never owns scheduling — in production this comes from the EMR's check-in
-  // event; here the sim plays the EMR.
+  // event; here the sim plays the EMR. Occasionally a couple arrives
+  // together (same last initial, shared party_id).
   if (waiting.length < PACE.maxWaiting && chance(0.45)) {
-    const a = createPatientWithAppointment({ appt_time: Date.now() + randInt(-10, 15) * 60000 });
+    const apptTime = Date.now() + randInt(-10, 15) * 60000;
+    const a = createPatientWithAppointment({ appt_time: apptTime });
     checkIn(a.id);
+    if (chance(0.2) && waiting.length + 1 < PACE.maxWaiting) {
+      const partner = createPatientWithAppointment({
+        appt_time: apptTime,
+        last_initial: patientOf(a).last_initial,
+      });
+      a.party_id = a.id; partner.party_id = a.id;
+      checkIn(partner.id);
+    }
   }
 
-  if (waiting.length > 0 && emptyRooms.length > 0 && chance(0.6))
-    assignRoom(waiting[0].id, pick(emptyRooms).id);
+  // Rooming: a partner joins their companion's room when there's space;
+  // otherwise the longest-waiting patient takes an open room.
+  if (waiting.length > 0 && chance(0.6)) {
+    const next = waiting[0];
+    const partnerAppt = next.party_id == null ? null
+      : S.appts.find((x) => x.party_id === next.party_id && x.id !== next.id
+          && x.status === 'roomed' && occupantsOf(x.room_id).length < ROOM_CAPACITY);
+    if (partnerAppt) assignRoom(next.id, partnerAppt.room_id);
+    else if (emptyRooms.length > 0) assignRoom(next.id, pick(emptyRooms).id);
+  }
 
   if (roomed.length > 0 && chance(0.2))
     raiseFlag(pick(roomed).room_id, pick(Object.keys(FLAG_META)));
@@ -626,17 +663,24 @@ function renderRooms() {
         '</span><span class="room-empty-label">Needs cleaning</span></div>' +
         '<div class="room-actions"><button class="btn btn-small" data-act="clean" data-id="' + r.id + '">Mark clean</button></div></div>';
     }
-    const a = apptById(r.current_appointment_id), p = patientOf(a);
-    const t = tone(a.roomed_at);
+    const occupants = occupantsOf(r.id);
+    const tones = occupants.map((a) => tone(a.roomed_at));
+    const worst = tones.indexOf('alert') >= 0 ? 'alert' : tones.indexOf('warn') >= 0 ? 'warn' : 'ok';
     const hasAlert = activeFlags(r.id).some((f) => FLAG_META[f.request_type].tone === 'alert');
-    const action = '<button class="btn btn-small btn-primary" data-act="checkout" data-id="' + a.id + '">Checkout</button>';
-    return '<div class="room-card tappable tone-' + (hasAlert ? 'alert' : t) + '" data-act="open-room" data-id="' + r.id + '">' +
+    const solo = occupants.length === 1;
+    const rows = occupants.map((a) => {
+      const p = patientOf(a), t = tone(a.roomed_at);
+      return '<div class="occupant' + (solo ? ' occupant-solo' : '') + '">' +
+        '<div class="occupant-main"><span class="occupant-name">' + esc(displayName(p)) + '</span>' +
+        '<span class="room-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</span></div>' +
+        '<span class="elapsed elapsed-' + t + '" data-since="' + a.roomed_at + '" title="Time in room">' + fmtElapsed(a.roomed_at) + '</span></div>';
+    }).join('');
+    return '<div class="room-card tappable tone-' + (hasAlert ? 'alert' : worst) + '" data-act="open-room" data-id="' + r.id + '">' +
       '<div class="room-head"><span class="room-name">' + r.name + '</span>' +
-      '<span class="elapsed elapsed-' + t + '" data-since="' + a.roomed_at + '" title="Time in room">' + fmtElapsed(a.roomed_at) + '</span></div>' +
-      '<div class="room-patient">' + esc(displayName(p)) + '</div>' +
-      '<div class="room-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</div>' +
+      (solo ? '' : '<span class="room-empty-label">' + occupants.length + ' patients</span>') + '</div>' +
+      rows +
       (activeFlags(r.id).length ? '<div class="room-flags">' + flagChips(r.id) + '</div>' : '') +
-      '<div class="room-actions">' + action + '</div></div>';
+      '</div>';
   }).join('');
 }
 
@@ -680,28 +724,47 @@ function renderSheet() {
   let html = null;
   if (sheetRef.kind === 'room') {
     const r = roomById(sheetRef.id);
-    if (r && r.status === 'occupied') {
-      const a = apptById(r.current_appointment_id), p = patientOf(a);
+    const occupants = r ? occupantsOf(r.id) : [];
+    if (r && r.status === 'occupied' && occupants.length > 0) {
       const flagBtns = Object.keys(FLAG_META)
         .filter((type) => !activeFlags(r.id).some((f) => f.request_type === type))
         .map((type) => '<button class="btn btn-small" data-act="flag" data-room="' + r.id + '" data-type="' + type + '">' + FLAG_META[type].label + '</button>')
         .join(' ');
-      html = sheetPatientBlock(p, a, r.name + ' · in room <span data-since="' + a.roomed_at + '">' + fmtElapsed(a.roomed_at) + '</span>') +
+      const occupantBlocks = occupants.map((a) => {
+        const p = patientOf(a);
+        return '<div class="sheet-section">' + esc(displayName(p)) + ' · in room <span data-since="' + a.roomed_at + '">' + fmtElapsed(a.roomed_at) + '</span></div>' +
+          '<dl class="sheet-details">' +
+          '<dt>Reason for visit</dt><dd>' + esc(p.reason_for_visit) + '</dd>' +
+          '<dt>Provider</dt><dd>' + a.provider_name + '</dd>' +
+          '<dt>Appointment</dt><dd>' + fmtClock(a.appt_time) + '</dd>' +
+          '<dt>Date of birth</dt><dd>' + p.date_of_birth + '</dd>' +
+          '<dt>Phone</dt><dd>' + p.phone + '</dd></dl>' +
+          '<div class="sheet-actions"><button class="btn btn-primary" data-act="checkout" data-id="' + a.id + '">Checkout ' + esc(displayName(p)) + '</button></div>';
+      }).join('');
+      html = '<div class="sheet-grip"></div>' +
+        '<div class="sheet-head"><div><div class="sheet-name">' + r.name + '</div>' +
+        '<div class="sheet-context">' + occupants.length + (occupants.length === 1 ? ' patient' : ' patients') + '</div></div>' +
+        '<button class="btn btn-small btn-ghost" data-act="close-sheet" aria-label="Close">✕</button></div>' +
+        occupantBlocks +
         (activeFlags(r.id).length ? '<div class="sheet-section">Active flags</div><div class="room-flags">' + flagChips(r.id) + '</div>' : '') +
         '<div class="sheet-section">Raise a flag</div><div class="room-actions">' + flagBtns + '</div>' +
-        '<div class="sheet-section">Visit</div><div class="sheet-actions">' +
-        '<button class="btn btn-primary" data-act="checkout" data-id="' + a.id + '">Checkout — free the room</button>' +
-        '</div><div class="sheet-note">Synthetic demo record — not a real person.</div>';
+        '<div class="sheet-note">Synthetic demo records — not real people.</div>';
     }
   } else if (sheetRef.kind === 'appt') {
     const a = apptById(sheetRef.id);
     if (a && a.status === 'waiting_room') {
       const p = patientOf(a);
-      const open = S.rooms.filter((r) => r.status === 'empty');
+      // empty rooms, plus rooms with one patient (a companion can join)
+      const open = S.rooms
+        .filter((r) => r.status !== 'needs_cleaning' && occupantsOf(r.id).length < ROOM_CAPACITY)
+        .map((r) => {
+          const occ = occupantsOf(r.id);
+          return { id: r.id, label: occ.length === 0 ? r.name : r.name + ' · join ' + esc(displayName(patientOf(occ[0]))) };
+        });
       html = sheetPatientBlock(p, a, 'Checked in · waiting <span data-since="' + a.checked_in_at + '">' + fmtElapsed(a.checked_in_at) + '</span>') +
         '<div class="sheet-section">Assign to room</div><div class="sheet-actions">' +
         (open.length === 0 ? '<div class="empty-note">No open rooms right now.</div>'
-          : open.map((r) => '<button class="btn" data-act="assign" data-id="' + a.id + '" data-room="' + r.id + '">' + r.name + '</button>').join('')) +
+          : open.map((r) => '<button class="btn" data-act="assign" data-id="' + a.id + '" data-room="' + r.id + '">' + r.label + '</button>').join('')) +
         '</div><div class="sheet-note">Synthetic demo record — not a real person.</div>';
     }
   }

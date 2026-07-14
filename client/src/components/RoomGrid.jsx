@@ -39,12 +39,36 @@ function FlagChip({ flag, nowMs, act }) {
   );
 }
 
+function OccupantRow({ occ, room, solo, nowMs, act, onSelect }) {
+  const tone = elapsedTone(occ.roomed_at, nowMs);
+  return (
+    <div
+      className={`occupant ${solo ? 'occupant-solo' : ''}`}
+      onClick={() => onSelect({ ...occ, context: room.name })}
+    >
+      <div className="occupant-main">
+        <span className="occupant-name">{displayName(occ)}</span>
+        <span className="room-meta">{formatClock(occ.appt_time)} · {occ.provider_name}</span>
+      </div>
+      <span className={`elapsed elapsed-${tone}`} title="Time in room">
+        {formatElapsed(occ.roomed_at, nowMs)}
+      </span>
+      <button
+        className="btn btn-small btn-primary"
+        onClick={(e) => {
+          e.stopPropagation();
+          act(() => api.checkout(occ.appointment_id));
+        }}
+      >
+        Checkout
+      </button>
+    </div>
+  );
+}
+
 function RoomCard({ room, nowMs, act, onSelect }) {
   const [flagPicker, setFlagPicker] = useState(false);
-  const occupied = room.status === 'occupied';
-  const tone = occupied ? elapsedTone(room.roomed_at, nowMs) : 'idle';
-  const hasAlertFlag = room.flags.some((f) => (FLAG_META[f.request_type]?.tone ?? 'warn') === 'alert');
-  const cardTone = hasAlertFlag ? 'alert' : tone;
+  const occupied = room.status === 'occupied' && room.occupants.length > 0;
 
   if (!occupied) {
     return (
@@ -62,38 +86,36 @@ function RoomCard({ room, nowMs, act, onSelect }) {
     );
   }
 
-  const patient = {
-    first_name: room.first_name,
-    last_initial: room.last_initial,
-    reason_for_visit: room.reason_for_visit,
-    phone: room.phone,
-    date_of_birth: room.date_of_birth,
-    provider_name: room.provider_name,
-    appt_time: room.appt_time,
-    context: room.name,
-  };
+  // The card border reflects the most urgent occupant (or an alert flag).
+  const tones = room.occupants.map((o) => elapsedTone(o.roomed_at, nowMs));
+  const worstTone = tones.includes('alert') ? 'alert' : tones.includes('warn') ? 'warn' : 'ok';
+  const hasAlertFlag = room.flags.some((f) => (FLAG_META[f.request_type]?.tone ?? 'warn') === 'alert');
+  const cardTone = hasAlertFlag ? 'alert' : worstTone;
+  const solo = room.occupants.length === 1;
 
   return (
-    <div className={`room-card room-occupied tone-${cardTone}`} onClick={() => onSelect(patient)}>
+    <div className={`room-card room-occupied tone-${cardTone}`}>
       <div className="room-head">
         <span className="room-name">{room.name}</span>
-        <span className={`elapsed elapsed-${tone}`} title="Time in room">
-          {formatElapsed(room.roomed_at, nowMs)}
-        </span>
+        {!solo && <span className="room-empty-label">{room.occupants.length} patients</span>}
       </div>
-      <div className="room-patient">{displayName(room)}</div>
-      <div className="room-meta">
-        {formatClock(room.appt_time)} · {room.provider_name}
-      </div>
+      {room.occupants.map((occ) => (
+        <OccupantRow
+          key={occ.appointment_id}
+          occ={occ}
+          room={room}
+          solo={solo}
+          nowMs={nowMs}
+          act={act}
+          onSelect={onSelect}
+        />
+      ))}
       {room.flags.length > 0 && (
         <div className="room-flags">
           {room.flags.map((f) => <FlagChip key={f.id} flag={f} nowMs={nowMs} act={act} />)}
         </div>
       )}
       <div className="room-actions" onClick={(e) => e.stopPropagation()}>
-        <button className="btn btn-small btn-primary" onClick={() => act(() => api.checkout(room.appointment_id))}>
-          Checkout
-        </button>
         {flagPicker ? (
           <select
             autoFocus

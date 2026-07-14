@@ -9,7 +9,16 @@ import { displayName, elapsedTone, formatClock, formatElapsed } from '../time.js
 export default function WaitingList({ waiting, rooms, act, nowMs, onSelect }) {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ first_name: '', last_initial: '', reason_for_visit: '' });
-  const openRooms = rooms.filter((r) => r.status === 'empty');
+  // A patient can go to an empty room or join a room with one person in it
+  // (e.g. a couple seen together). Rooms needing cleaning are unavailable.
+  const openRooms = rooms
+    .filter((r) => r.status !== 'needs_cleaning' && r.occupants.length < 2)
+    .map((r) => ({
+      id: r.id,
+      label: r.occupants.length === 0
+        ? r.name
+        : `${r.name} · join ${r.occupants[0].first_name} ${r.occupants[0].last_initial}.`,
+    }));
 
   const submit = (e) => {
     e.preventDefault();
@@ -59,7 +68,7 @@ export default function WaitingList({ waiting, rooms, act, nowMs, onSelect }) {
                       {openRooms.length === 0 ? 'No open rooms' : 'Room…'}
                     </option>
                     {openRooms.map((r) => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
+                      <option key={r.id} value={r.id}>{r.label}</option>
                     ))}
                   </select>
                 </span>

@@ -171,8 +171,15 @@ body {
 .room-head { display: flex; justify-content: space-between; align-items: baseline; }
 .room-name { font-weight: 700; letter-spacing: 0.03em; }
 .room-empty-label { color: var(--text-dim); font-size: 0.85rem; }
-.room-patient { font-size: 1.5rem; font-weight: 700; }
 .room-meta { color: var(--text-dim); font-size: 0.85rem; }
+
+/* occupants — a room can hold one patient or a pair (e.g. a couple) */
+.occupant { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem 0.5rem; cursor: pointer; }
+.occupant + .occupant { border-top: 1px dashed var(--line); padding-top: 0.45rem; }
+.occupant:hover .occupant-name { color: var(--accent); }
+.occupant-main { min-width: 0; margin-right: auto; display: flex; flex-direction: column; }
+.occupant-name { font-weight: 700; font-size: 1.15rem; line-height: 1.2; white-space: nowrap; }
+.occupant-solo .occupant-name { font-size: 1.5rem; }
 
 .elapsed {
   font-variant-numeric: tabular-nums;
@@ -274,11 +281,13 @@ body {
 .queue-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
   padding: 0.6rem 0.15rem;
   border-bottom: 1px solid var(--line);
   cursor: pointer;
 }
+.queue-name { white-space: nowrap; }
 .queue-row:last-of-type { border-bottom: none; }
 .queue-row:hover { background: var(--bg-hover); }
 .queue-main { min-width: 0; margin-right: auto; }
