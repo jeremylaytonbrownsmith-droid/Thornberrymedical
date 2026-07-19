@@ -6,7 +6,7 @@ import { displayName, elapsedTone, formatClock, formatElapsed } from '../time.js
 // production this list arrives from the EMR the moment a patient is checked
 // in; in the demo the simulation plays the EMR's role. The staff action here
 // is a single decision: which room.
-export default function WaitingList({ waiting, rooms, act, nowMs, onSelect }) {
+export default function WaitingList({ waiting, rooms, act, nowMs, onSelect, wallMode }) {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ first_name: '', last_initial: '', reason_for_visit: '' });
   // A patient can go to an empty room or join a room with one person in it
@@ -43,18 +43,23 @@ export default function WaitingList({ waiting, rooms, act, nowMs, onSelect }) {
           {waiting.map((w) => {
             const tone = elapsedTone(w.checked_in_at, nowMs);
             return (
-              <li key={w.appointment_id} className="queue-row" onClick={() => onSelect({ ...w, context: 'Checked in' })}>
+              <li
+                key={w.appointment_id}
+                className="queue-row"
+                style={wallMode ? { cursor: 'default' } : undefined}
+                onClick={wallMode ? undefined : () => onSelect({ ...w, context: 'Checked in' })}
+              >
                 <div className="queue-main">
                   <div className="queue-name">
                     {displayName(w)}
-                    {w.is_walk_in ? <span className="walkin-tag">manual</span> : null}
+                    {!wallMode && w.is_walk_in ? <span className="walkin-tag">manual</span> : null}
                   </div>
-                  <div className="queue-meta">{formatClock(w.appt_time)} · {w.provider_name}</div>
+                  {!wallMode && <div className="queue-meta">{formatClock(w.appt_time)} · {w.provider_name}</div>}
                 </div>
                 <span className={`elapsed elapsed-${tone}`} title="Waiting since check-in">
                   {formatElapsed(w.checked_in_at, nowMs)}
                 </span>
-                <span onClick={(e) => e.stopPropagation()}>
+                {!wallMode && <span onClick={(e) => e.stopPropagation()}>
                   <select
                     className="room-select"
                     value=""
@@ -71,14 +76,14 @@ export default function WaitingList({ waiting, rooms, act, nowMs, onSelect }) {
                       <option key={r.id} value={r.id}>{r.label}</option>
                     ))}
                   </select>
-                </span>
+                </span>}
               </li>
             );
           })}
         </ul>
       )}
 
-      {showAdd ? (
+      {wallMode ? null : showAdd ? (
         <form className="walkin-form" onSubmit={submit}>
           <input
             required

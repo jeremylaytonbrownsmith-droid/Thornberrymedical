@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { formatClock } from '../time.js';
 
-export default function Header({ state, nowMs, act, theme, onToggleTheme, soundOn, onToggleSound }) {
+export default function Header({ state, nowMs, act, theme, onToggleTheme, soundOn, onToggleSound, wallMode, onToggleWall }) {
   const occupied = state.rooms.filter((r) => r.status === 'occupied').length;
 
   return (
@@ -18,6 +18,13 @@ export default function Header({ state, nowMs, act, theme, onToggleTheme, soundO
       </div>
       <div className="header-controls">
         <span className="clock">{formatClock(nowMs)}</span>
+        <button
+          className={`icon-toggle${wallMode ? ' active' : ''}`}
+          title="For screens patients can see: initials and status colors only — no clinical text, no controls"
+          onClick={onToggleWall}
+        >
+          {wallMode ? '🖥 Wall mode on' : '🖥 Wall mode'}
+        </button>
         <button
           className={`icon-toggle${soundOn ? ' active' : ''}`}
           title={soundOn ? 'Chime on new requests: on' : 'Chime on new requests: off'}

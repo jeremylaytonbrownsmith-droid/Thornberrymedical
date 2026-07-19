@@ -77,6 +77,12 @@ desk). The standalone file is the "text someone a link" version.
   acknowledge first, resolve second, so the board always shows who owns an open
   request — and ✓ resolves it. A "needs assistance" flag turns the whole card
   red.
+- **Wall mode** — a header toggle for any screen mounted where patients can
+  see it: the board shows initials, timers, and colored request dots only —
+  no clinical text (flag labels, visit reasons), no action buttons, and the
+  patient detail panel is disabled. HIPAA treats names on tracking boards as
+  permissible incidental disclosure given reasonable safeguards; wall mode is
+  that safeguard for public-facing screens. Staff screens keep full detail.
 - **Light / dark board** — light is the default (clinics are bright places);
   the header toggle switches to a dark board for dim rooms. The choice is
   remembered per browser.

@@ -14,6 +14,9 @@ export default function App() {
   const [selected, setSelected] = useState(null); // { patient, appt_time, provider_name, ... }
   const [theme, setTheme] = useState(() => localStorage.getItem('pluff-theme') || 'light');
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('pluff-sound') === 'on');
+  // Wall mode: for screens patients can see — names stay initials, but all
+  // clinical text, action buttons, and detail panels are hidden.
+  const [wallMode, setWallMode] = useState(() => localStorage.getItem('pluff-wall') === 'on');
   const seenFlagIds = useRef(null);
   const soundOnRef = useRef(soundOn);
   soundOnRef.current = soundOn;
@@ -26,6 +29,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('pluff-sound', soundOn ? 'on' : 'off');
   }, [soundOn]);
+
+  useEffect(() => {
+    localStorage.setItem('pluff-wall', wallMode ? 'on' : 'off');
+    if (wallMode) setSelected(null);
+  }, [wallMode]);
 
   const refresh = useCallback(async () => {
     try {
@@ -83,17 +91,19 @@ export default function App() {
         onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         soundOn={soundOn}
         onToggleSound={() => setSoundOn(!soundOn)}
+        wallMode={wallMode}
+        onToggleWall={() => setWallMode(!wallMode)}
       />
       {error && <div className="error-banner">{error}</div>}
       <main className="layout">
         <section className="board-col">
-          <RoomGrid rooms={state.rooms} nowMs={nowMs} act={act} onSelect={setSelected} />
+          <RoomGrid rooms={state.rooms} nowMs={nowMs} act={act} onSelect={setSelected} wallMode={wallMode} />
         </section>
         <aside className="side-col">
-          <WaitingList waiting={state.waiting} rooms={state.rooms} nowMs={nowMs} act={act} onSelect={setSelected} />
+          <WaitingList waiting={state.waiting} rooms={state.rooms} nowMs={nowMs} act={act} onSelect={setSelected} wallMode={wallMode} />
         </aside>
       </main>
-      {selected && <PatientPanel entry={selected} onClose={() => setSelected(null)} />}
+      {selected && !wallMode && <PatientPanel entry={selected} onClose={() => setSelected(null)} />}
       <footer className="footer">
         Demo environment — all patient data is synthetic. No real PHI is stored or displayed.
       </footer>

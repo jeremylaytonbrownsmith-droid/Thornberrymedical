@@ -200,6 +200,12 @@
   .flag-info { background: var(--chip-info-bg); color: var(--chip-info-text); }
   .flag-ok { background: var(--chip-ok-bg); color: var(--chip-ok-text); }
   .flag-age { font-weight: 700; font-variant-numeric: tabular-nums; opacity: 0.85; }
+  /* wall mode: requests reduce to colored dots — no clinical text on public screens */
+  .flag-dot { font-size: 1.05rem; line-height: 1; }
+  .flag-dot-warn { color: var(--warn); }
+  .flag-dot-alert { color: var(--alert); }
+  .flag-dot-info { color: var(--info); }
+  .flag-dot-ok { color: var(--ok); }
   .flag-taken { font-style: italic; opacity: 0.85; }
   .flag-btn {
     border: none; background: rgba(127,127,127,0.18); color: inherit;
@@ -303,6 +309,7 @@
   </div>
   <span class="clock" id="clock">—</span>
   <div class="header-controls">
+    <button class="icon-toggle" id="wallToggle" title="For screens patients can see: initials and status colors only — no clinical text, no controls">🖥 Wall mode</button>
     <button class="icon-toggle" id="soundToggle" title="Play a chime when a new request flag is raised">🔕 Chime off</button>
     <button class="icon-toggle" id="themeToggle" title="Switch between light and dark board">☾ Dark board</button>
     <label class="sim-toggle" title="When on, synthetic patients move through the clinic automatically">
@@ -402,6 +409,10 @@ function fakePatient() {
 let nextId = 1;
 const S = { patients: [], appts: [], rooms: [], flags: [], sim: true, checkedOut: 0 };
 let soundOn = false;
+// Wall mode: for screens patients can see — initials and status colors only,
+// no clinical text, no controls, no detail sheets.
+let wallMode = false;
+try { wallMode = localStorage.getItem('pluff-wall') === 'on'; } catch (e) { /* private mode */ }
 
 const apptById = (id) => S.appts.find((a) => a.id === id);
 const roomById = (id) => S.rooms.find((r) => r.id === id);
@@ -641,6 +652,12 @@ function renderStats() {
 }
 
 function flagChips(roomId) {
+  if (wallMode) {
+    // colored dots signal attention without exposing what the request is
+    return activeFlags(roomId).map((f) =>
+      '<span class="flag-dot flag-dot-' + FLAG_META[f.request_type].tone + '" title="Staff request">●</span>'
+    ).join('');
+  }
   return activeFlags(roomId).map((f) => {
     const meta = FLAG_META[f.request_type];
     return '<span class="flag flag-' + meta.tone + '">' + meta.label +
@@ -661,7 +678,7 @@ function renderRooms() {
     if (r.status === 'needs_cleaning') {
       return '<div class="room-card tone-clean"><div class="room-head"><span class="room-name">' + r.name +
         '</span><span class="room-empty-label">Needs cleaning</span></div>' +
-        '<div class="room-actions"><button class="btn btn-small" data-act="clean" data-id="' + r.id + '">Mark clean</button></div></div>';
+        (wallMode ? '' : '<div class="room-actions"><button class="btn btn-small" data-act="clean" data-id="' + r.id + '">Mark clean</button></div>') + '</div>';
     }
     const occupants = occupantsOf(r.id);
     const tones = occupants.map((a) => tone(a.roomed_at));
@@ -672,10 +689,11 @@ function renderRooms() {
       const p = patientOf(a), t = tone(a.roomed_at);
       return '<div class="occupant' + (solo ? ' occupant-solo' : '') + '">' +
         '<div class="occupant-main"><span class="occupant-name">' + esc(displayName(p)) + '</span>' +
-        '<span class="room-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</span></div>' +
+        (wallMode ? '' : '<span class="room-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</span>') + '</div>' +
         '<span class="elapsed elapsed-' + t + '" data-since="' + a.roomed_at + '" title="Time in room">' + fmtElapsed(a.roomed_at) + '</span></div>';
     }).join('');
-    return '<div class="room-card tappable tone-' + (hasAlert ? 'alert' : worst) + '" data-act="open-room" data-id="' + r.id + '">' +
+    return '<div class="room-card tone-' + (hasAlert ? 'alert' : worst) + (wallMode ? '' : ' tappable') + '"' +
+      (wallMode ? '' : ' data-act="open-room" data-id="' + r.id + '"') + '>' +
       '<div class="room-head"><span class="room-name">' + r.name + '</span>' +
       (solo ? '' : '<span class="room-empty-label">' + occupants.length + ' patients</span>') + '</div>' +
       rows +
@@ -691,12 +709,12 @@ function renderWaiting() {
     ? '<div class="empty-note">No one is waiting.</div>'
     : waiting.map((a) => {
         const p = patientOf(a), t = tone(a.checked_in_at);
-        return '<div class="waiting-row" data-act="open-appt" data-id="' + a.id + '">' +
+        return '<div class="waiting-row"' + (wallMode ? '' : ' data-act="open-appt" data-id="' + a.id + '"') + '>' +
           '<div class="waiting-main"><div class="waiting-name">' + esc(displayName(p)) +
-          (a.is_walk_in ? '<span class="walkin-tag">manual</span>' : '') + '</div>' +
-          '<div class="waiting-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</div></div>' +
+          (!wallMode && a.is_walk_in ? '<span class="walkin-tag">manual</span>' : '') + '</div>' +
+          (wallMode ? '' : '<div class="waiting-meta">' + fmtClock(a.appt_time) + ' · ' + a.provider_name + '</div>') + '</div>' +
           '<div class="waiting-right"><span class="elapsed elapsed-' + t + '" data-since="' + a.checked_in_at + '" data-kind="wait">' + fmtElapsed(a.checked_in_at) + '</span>' +
-          '<button class="btn btn-small btn-primary" data-act="open-appt" data-id="' + a.id + '">Room…</button></div></div>';
+          (wallMode ? '' : '<button class="btn btn-small btn-primary" data-act="open-appt" data-id="' + a.id + '">Room…</button>') + '</div></div>';
       }).join('');
 }
 
@@ -815,6 +833,20 @@ $('simToggle').addEventListener('change', (e) => {
   $('simLabel').textContent = 'Simulation ' + (S.sim ? 'on' : 'off');
 });
 
+function applyWallMode() {
+  const btn = $('wallToggle');
+  btn.textContent = wallMode ? '🖥 Wall mode on' : '🖥 Wall mode';
+  btn.classList.toggle('active', wallMode);
+  $('walkinToggle').style.display = wallMode ? 'none' : '';
+  if (wallMode) { $('walkinForm').classList.remove('open'); closeSheet(); }
+  try { localStorage.setItem('pluff-wall', wallMode ? 'on' : 'off'); } catch (e) { /* private mode */ }
+}
+$('wallToggle').addEventListener('click', () => {
+  wallMode = !wallMode;
+  applyWallMode();
+  render();
+});
+
 $('soundToggle').addEventListener('click', () => {
   soundOn = !soundOn;
   const btn = $('soundToggle');
@@ -865,6 +897,7 @@ $('walkinForm').addEventListener('submit', (e) => {
 
 /* ================= boot ================= */
 seed();
+applyWallMode();
 render();
 updateTimers();
 setInterval(updateTimers, 1000);

@@ -209,6 +209,12 @@ body {
 .flag-info { background: var(--chip-info-bg); color: var(--chip-info-text); }
 .flag-ok { background: var(--chip-ok-bg); color: var(--chip-ok-text); }
 .flag-age { font-weight: 700; font-variant-numeric: tabular-nums; opacity: 0.85; }
+/* wall mode: requests reduce to colored dots — no clinical text on public screens */
+.flag-dot { font-size: 1.05rem; line-height: 1; }
+.flag-dot-warn { color: var(--warn); }
+.flag-dot-alert { color: var(--alert); }
+.flag-dot-info { color: var(--info); }
+.flag-dot-ok { color: var(--ok); }
 .flag-taken { font-style: italic; opacity: 0.85; }
 .flag-btn {
   border: none;
