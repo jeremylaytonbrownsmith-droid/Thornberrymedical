@@ -37,9 +37,12 @@ npm start          # everything on http://localhost:4000
 
 ## Live demo
 
-The shareable demo is published via GitHub Pages:
+The shareable demo is published via GitHub Pages at the project's domain:
 
-**https://jeremylaytonbrownsmith-droid.github.io/Thornberrymedical/**
+**https://pluff.health**
+
+(The original https://jeremylaytonbrownsmith-droid.github.io/Thornberrymedical/
+address redirects there.)
 
 GitHub Pages serves this branch's root, where `index.html` is a copy of
 `standalone/pluff-demo.html` kept in sync by
