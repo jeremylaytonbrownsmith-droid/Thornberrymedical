@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "n": "q1RoHSKt9VAgdQ0s-90oyExYt_i3JI7TdifvXoLHBaJLioC2v3VgXHZ52-UJpCBiftScDIMxaZquiNexxM8WNXNtnhtm-yjbUohVS0k-ynNyU4CWHZ1MaS0D_pZ8kStWyL2EqpwB4JSlQy8cruf4iPmofWVuP-S1rNqqJ-7XJWU3mcl8AnVQO-yDGbpfAakE3grOFcHSGr6O9J7advtBewjMbeCG1al650TJMQEulc0Rh_HZACuaZFPaBcGdUnALahXcQjy0RHmz6Xj1tO-wd8wEmZuLLBZzdDzfs5fVggbVhhlM2iM3LsCtsMIzseoGlHUU5CUVE8oakyJcWQk20Q",
+      "e": "AQAB",
+      "alg": "RS384",
+      "use": "sig",
+      "kid": "pluff-key-2026-08"
+    }
+  ]
+}
