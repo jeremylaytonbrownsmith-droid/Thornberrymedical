@@ -11,6 +11,8 @@
     "dev:client": "npm --prefix client run dev",
     "build": "npm --prefix client run build",
     "start": "node server/index.js",
+    "connector": "node connector/index.js",
+    "connector:mock": "ECW_MOCK=1 node connector/index.js --once",
     "verify": "node scripts/verify-lifecycle.mjs"
   },
   "dependencies": {

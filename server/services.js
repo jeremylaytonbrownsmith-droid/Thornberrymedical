@@ -216,6 +216,45 @@ export function resolveFlag(flagId) {
   return db.prepare('SELECT * FROM staff_requests WHERE id = ?').get(flagId);
 }
 
+// ---------- eCW connector sync ----------
+
+// Reconciles arrival records from the connector idempotently, keyed by the
+// eCW Encounter id: new active arrivals are created + checked in; ended
+// visits are checked out. Rooming stays a human action on the board.
+export const syncArrivals = db.transaction((arrivals) => {
+  const summary = { created: 0, completed: 0, already: 0, skipped: 0 };
+  for (const a of arrivals) {
+    if (!a?.encounter_id) { summary.skipped++; continue; }
+    const existing = db.prepare('SELECT * FROM appointments WHERE ecw_encounter_id = ?').get(String(a.encounter_id));
+    if (!existing) {
+      if (a.status !== 'active') { summary.skipped++; continue; }
+      const created = createPatientWithAppointment({
+        first_name: a.first_name,
+        last_initial: a.last_initial,
+        provider_name: a.provider_name,
+        appt_time: a.appt_time,
+        reason_for_visit: 'Office visit',
+      });
+      checkIn(created.appointment_id);
+      db.prepare('UPDATE appointments SET ecw_encounter_id = ? WHERE id = ?')
+        .run(String(a.encounter_id), created.appointment_id);
+      summary.created++;
+    } else if (a.status === 'ended' && ['waiting_room', 'roomed', 'ready_for_checkout'].includes(existing.status)) {
+      if (existing.status === 'waiting_room') {
+        // never roomed: close it out directly, no room to free
+        db.prepare(`UPDATE appointments SET status = 'checked_out', checked_out_at = ? WHERE id = ?`)
+          .run(nowIso(), existing.id);
+      } else {
+        checkout(existing.id, { needsCleaning: true });
+      }
+      summary.completed++;
+    } else {
+      summary.already++;
+    }
+  }
+  return summary;
+});
+
 // ---------- seed / reset ----------
 
 export const reseed = db.transaction(() => {

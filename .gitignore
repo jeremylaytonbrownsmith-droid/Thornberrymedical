@@ -4,3 +4,6 @@ client/dist/
 server/data/
 *.log
 .DS_Store
+*.pem
+connector/state.json
+.env

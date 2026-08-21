@@ -49,6 +49,14 @@ app.post('/api/rooms/:id/flags', wrap((req) => svc.raiseFlag(+req.params.id, req
 app.post('/api/flags/:id/claim', wrap((req) => svc.claimFlag(+req.params.id, req.body?.name)));
 app.post('/api/flags/:id/resolve', wrap((req) => svc.resolveFlag(+req.params.id)));
 
+// eCW connector sync (see connector/). Optional shared secret via SYNC_TOKEN.
+app.post('/api/sync/arrivals', wrap((req) => {
+  if (process.env.SYNC_TOKEN && req.get('x-sync-token') !== process.env.SYNC_TOKEN) {
+    throw new ApiError(401, 'invalid sync token');
+  }
+  return svc.syncArrivals(req.body?.arrivals ?? []);
+}));
+
 // Demo controls
 app.post('/api/sim', wrap((req) => ({ enabled: setSimEnabled(req.body.enabled) })));
 app.post('/api/reset', wrap(() => {

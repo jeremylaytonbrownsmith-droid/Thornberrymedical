@@ -18,7 +18,9 @@ const PACE = {
 const chance = (p) => Math.random() < p;
 const ageSeconds = (iso) => (Date.now() - new Date(iso).getTime()) / 1000;
 
-let enabled = true;
+// SIM_DEFAULT=off starts with the simulation disabled — used when the board
+// is fed by the eCW connector instead of the demo loop.
+let enabled = process.env.SIM_DEFAULT !== 'off';
 let timer = null;
 
 export const simEnabled = () => enabled;

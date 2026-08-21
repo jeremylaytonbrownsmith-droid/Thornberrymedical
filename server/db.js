@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     CHECK (status IN ('scheduled','checked_in','waiting_room','roomed','ready_for_checkout','checked_out')),
   room_id INTEGER REFERENCES rooms(id),
   party_id INTEGER,
+  ecw_encounter_id TEXT,
   is_walk_in INTEGER NOT NULL DEFAULT 0,
   checked_in_at TEXT,
   roomed_at TEXT,
@@ -67,6 +68,14 @@ try {
 // Appointments in the same party (e.g. a couple) share a party_id.
 try {
   db.exec('ALTER TABLE appointments ADD COLUMN party_id INTEGER');
+} catch {
+  // column already exists
+}
+
+// Databases created before the eCW connector lack the column that links a
+// board appointment to its eClinicalWorks Encounter.
+try {
+  db.exec('ALTER TABLE appointments ADD COLUMN ecw_encounter_id TEXT');
 } catch {
   // column already exists
 }
